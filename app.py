@@ -445,13 +445,17 @@ with tabs[3]:
 
 st.markdown("---")
 st.header("Generate PDF Estimate")
+
 col1, col2, col3 = st.columns(3)
+
 with col1:
     cname = st.text_input("Customer Name", value=st.session_state.customer_info['customer_name'])
     st.session_state.customer_info['customer_name'] = cname
+
 with col2:
     addr = st.text_input("Project Address", value=st.session_state.customer_info['project_address'])
     st.session_state.customer_info['project_address'] = addr
+
 with col3:
     srep = st.text_input("Sales Representative", value=st.session_state.customer_info['sales_rep'])
     st.session_state.customer_info['sales_rep'] = srep
