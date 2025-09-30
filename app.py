@@ -8,98 +8,61 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 
-st.set_page_config(
-    page_title="Construction Pricing Calculator",
-    page_icon="🏗️",
-    layout="wide"
-)
-
-if 'current_service' not in st.session_state:
-    st.session_state.current_service = 'gutters'
+st.set_page_config(page_title="Garden State Brickface & Siding Pricing Calculator", page_icon="🏗️", layout="wide")
 
 if 'measurements' not in st.session_state:
     st.session_state.measurements = {
-        'gutters': pd.DataFrame(columns=['Location', 'Gutter Type', 'Measurements', 'LF']),
-        'leaders': pd.DataFrame(columns=['Location', 'Leader Type', 'Measurements', 'LF']),
-        'guards': pd.DataFrame(columns=['Location', 'Guard Type', 'Measurements', 'LF']),
+        'gutters': pd.DataFrame(columns=['Location', 'Gutter Type', 'LF']),
+        'leaders': pd.DataFrame(columns=['Location', 'Leader Type', 'LF']),
+        'guards': pd.DataFrame(columns=['Location', 'Guard Type', 'LF']),
         'stone_flats': pd.DataFrame(columns=['Location', 'Width', 'Height', 'Total SF']),
         'stone_corners': pd.DataFrame(columns=['Location', 'Width', 'Height', 'LF']),
         'stone_sills': pd.DataFrame(columns=['Location', 'Width', 'Height', 'LF']),
-        'stucco': pd.DataFrame(columns=['Location', 'Item Type', 'Measurements', 'SF']),
-        'painting': pd.DataFrame(columns=['Location', 'Item Type', 'Measurements', 'SF'])
+        'stucco': pd.DataFrame(columns=['Location', 'Item Type', 'SF']),
+        'painting': pd.DataFrame(columns=['Location', 'Item Type', 'SF'])
     }
 
 if 'misc_quantities' not in st.session_state:
     st.session_state.misc_quantities = {}
 
 if 'customer_info' not in st.session_state:
-    st.session_state.customer_info = {
-        'customer_name': '',
-        'project_address': '',
-        'sales_rep': ''
-    }
+    st.session_state.customer_info = {'customer_name': '', 'project_address': '', 'sales_rep': ''}
 
 SERVICE_DATA = {
     'gutters': {
         'name': 'Gutters and Leaders',
         'items': {
-            'Gutter 5" white': {'price': 13, 'unit': 'LF', 'category': 'gutters'},
-            'Gutter 5" all colors': {'price': 15, 'unit': 'LF', 'category': 'gutters'},
-            'Gutter 6" white': {'price': 18, 'unit': 'LF', 'category': 'gutters'},
-            'Gutter 6" all colors': {'price': 19, 'unit': 'LF', 'category': 'gutters'},
-            'Extra Gauge (0.032 gauge)': {'price': 1, 'unit': 'LF', 'category': 'gutters'},
-            'Leaders 2x3 white': {'price': 12, 'unit': 'LF', 'category': 'leaders'},
-            'Leaders 2x3 all colors': {'price': 13, 'unit': 'LF', 'category': 'leaders'},
-            'Leader 2x3 white - PVC': {'price': 18, 'unit': 'LF', 'category': 'leaders'},
-            'Leaders 3x4 white': {'price': 15, 'unit': 'LF', 'category': 'leaders'},
-            'Leaders 3x4 all colors': {'price': 16, 'unit': 'LF', 'category': 'leaders'},
-            'Leader 3" Round Corrugated - White': {'price': 47, 'unit': 'LF', 'category': 'leaders'},
-            'Extra Gauge (0.032 gauge) Leader': {'price': 1, 'unit': 'LF', 'category': 'leaders'},
-            'Shur-flow 5" (white)': {'price': 15, 'unit': 'LF', 'category': 'guards'},
-            'Shur-flow 5" (black or aluminum)': {'price': 16, 'unit': 'LF', 'category': 'guards'},
-            'Shur-flow 6" (white)': {'price': 16, 'unit': 'LF', 'category': 'guards'},
-            'Shur-flow 6" (black or aluminum)': {'price': 18, 'unit': 'LF', 'category': 'guards'},
-            'Screen 5"': {'price': 10, 'unit': 'LF', 'category': 'guards'},
-            'Screen 6"': {'price': 12, 'unit': 'LF', 'category': 'guards'},
-            'Leafshelter 6" - White': {'price': 18, 'unit': 'LF', 'category': 'guards'},
-            'Leafshelter 6" - All Colors': {'price': 21, 'unit': 'LF', 'category': 'guards'},
-            'Strap Hangers per LF': {'price': 4, 'unit': 'LF', 'category': 'guards'}
-        },
-        'notices': [
-            '50% deposit required for all gutter and leader projects',
-            'JOB MINIMUM IS $650 IF COMBINED WITH OTHER WORK - STAND ALONE JOB MINIMUM IS $1,150'
-        ],
-        'contract_specs': [
-            'Work area and Location',
-            'Final location for the leaders',
-            'Color',
-            'Existing splash block(s) or extension(s)',
-            'Final price, payment schedule, and how to pay'
-        ]
+            'Gutter 5" white': {'price': 13, 'category': 'gutters'},
+            'Gutter 5" all colors': {'price': 15, 'category': 'gutters'},
+            'Gutter 6" white': {'price': 18, 'category': 'gutters'},
+            'Gutter 6" all colors': {'price': 19, 'category': 'gutters'},
+            'Extra Gauge (0.032 gauge)': {'price': 1, 'category': 'gutters'},
+            'Leaders 2x3 white': {'price': 12, 'category': 'leaders'},
+            'Leaders 2x3 all colors': {'price': 13, 'category': 'leaders'},
+            'Leader 2x3 white - PVC': {'price': 18, 'category': 'leaders'},
+            'Leaders 3x4 white': {'price': 15, 'category': 'leaders'},
+            'Leaders 3x4 all colors': {'price': 16, 'category': 'leaders'},
+            'Leader 3" Round Corrugated - White': {'price': 47, 'category': 'leaders'},
+            'Extra Gauge (0.032 gauge) Leader': {'price': 1, 'category': 'leaders'},
+            'Shur-flow 5" (white)': {'price': 15, 'category': 'guards'},
+            'Shur-flow 5" (black or aluminum)': {'price': 16, 'category': 'guards'},
+            'Shur-flow 6" (white)': {'price': 16, 'category': 'guards'},
+            'Shur-flow 6" (black or aluminum)': {'price': 18, 'category': 'guards'},
+            'Screen 5"': {'price': 10, 'category': 'guards'},
+            'Screen 6"': {'price': 12, 'category': 'guards'},
+            'Leafshelter 6" - White': {'price': 18, 'category': 'guards'},
+            'Leafshelter 6" - All Colors': {'price': 21, 'category': 'guards'},
+            'Strap Hangers per LF': {'price': 4, 'category': 'guards'}
+        }
     },
     'stone': {
         'name': 'Stone Veneer',
-        'items': {
-            'Stone Flats': {'price': 28, 'unit': 'SF'},
-            'Stone Corners': {'price': 28, 'unit': 'LF'},
-            'Stone Sills': {'price': 28, 'unit': 'LF'}
-        },
-        'delivery_fee': 1100,
-        'contract_specs': [
-            'Work area and location',
-            'Color & Style',
-            'Mortar Color',
-            'Payment schedule and how to pay'
-        ]
+        'items': {'Stone Flats': {'price': 28}, 'Stone Corners': {'price': 28}, 'Stone Sills': {'price': 28}},
+        'delivery_fee': 222
     },
     'stucco': {
         'name': 'Stucco Painting',
-        'items': {
-            'Wall': {'price': 8.36, 'unit': 'SF'},
-            'Soffit': {'price': 8.36, 'unit': 'SF'},
-            'Column': {'price': 8.36, 'unit': 'SF'},
-            'Beam': {'price': 8.36, 'unit': 'SF'}
-        },
+        'items': {'Wall': {'price': 8.36}, 'Soffit': {'price': 8.36}, 'Column': {'price': 8.36}, 'Beam': {'price': 8.36}},
         'misc_items': {
             'EIFS Repair': {'price': 60, 'unit': 'SF'},
             'BCMA (Fiberglass, Basecoat, Acrylic Stucco)': {'price': 17.59, 'unit': 'SF'},
@@ -114,342 +77,264 @@ SERVICE_DATA = {
             'Additional stucco crack repair above 50lf': {'price': 7, 'unit': 'LF'},
             'Spot Point Brick': {'price': 29, 'unit': 'SF'},
             'Full Cut and Re-Point (Under 500sf)': {'price': 29, 'unit': 'SF'}
-        },
-        'minimums': {
-            'LOXON PAINTING': 5600,
-            'CAULKING': 5600
         }
     },
     'painting': {
         'name': 'House Painting',
-        'items': {
-            'Exterior Wall': {'price': 4.18, 'unit': 'SF'},
-            'Trim': {'price': 4.18, 'unit': 'LF'},
-            'Door': {'price': 125, 'unit': 'Each'},
-            'Window': {'price': 75, 'unit': 'Each'}
-        },
-        'minimums': {
-            'HOUSE PAINTING': 5600
-        }
+        'items': {'Exterior Wall': {'price': 4.18}, 'Trim': {'price': 4.18}, 'Door': {'price': 125}, 'Window': {'price': 75}}
     }
 }
 
-def calculate_stone_sf_or_lf(width, height, item_type='flats'):
-    if pd.isna(width) or pd.isna(height):
-        return 0
-    width = float(width)
-    height = float(height)
-    if item_type == 'flats':
-        return (width * height) / 144
+def calc_stone(w, h, t='flats'):
+    if pd.isna(w) or pd.isna(h): return 0
+    return (float(w) * float(h)) / 144 if t == 'flats' else float(w) / 12
+
+def calc_totals(svc):
+    tots = {}
+    if svc == 'gutters':
+        for cat in ['gutters', 'leaders', 'guards']:
+            for _, r in st.session_state.measurements[cat].iterrows():
+                col = 'Gutter Type' if cat == 'gutters' else ('Leader Type' if cat == 'leaders' else 'Guard Type')
+                if pd.notna(r[col]) and pd.notna(r['LF']):
+                    itm = r[col]
+                    if itm in SERVICE_DATA['gutters']['items'] and SERVICE_DATA['gutters']['items'][itm]['category'] == cat:
+                        if itm not in tots: tots[itm] = {'qty': 0, 'price': SERVICE_DATA['gutters']['items'][itm]['price'], 'total': 0}
+                        tots[itm]['qty'] += float(r['LF'])
+    elif svc == 'stone':
+        for k, df_key in [('Stone Flats', 'stone_flats'), ('Stone Corners', 'stone_corners'), ('Stone Sills', 'stone_sills')]:
+            col = 'Total SF' if k == 'Stone Flats' else 'LF'
+            for _, r in st.session_state.measurements[df_key].iterrows():
+                if pd.notna(r[col]):
+                    if k not in tots: tots[k] = {'qty': 0, 'price': SERVICE_DATA['stone']['items'][k]['price'], 'total': 0}
+                    tots[k]['qty'] += float(r[col])
     else:
-        return width / 12
+        for _, r in st.session_state.measurements[svc].iterrows():
+            if pd.notna(r['Item Type']) and pd.notna(r['SF']):
+                itm = r['Item Type']
+                if itm in SERVICE_DATA[svc]['items']:
+                    if itm not in tots: tots[itm] = {'qty': 0, 'price': SERVICE_DATA[svc]['items'][itm]['price'], 'total': 0}
+                    tots[itm]['qty'] += float(r['SF'])
+    for i in tots: tots[i]['total'] = tots[i]['qty'] * tots[i]['price']
+    return tots, sum([t['total'] for t in tots.values()])
 
-def calculate_totals(service):
-    totals = {}
-    service_items = SERVICE_DATA[service]['items']
-    
-    if service == 'gutters':
-        for idx, row in st.session_state.measurements['gutters'].iterrows():
-            if pd.notna(row['Gutter Type']) and pd.notna(row['LF']):
-                item = row['Gutter Type']
-                if item in service_items and service_items[item]['category'] == 'gutters':
-                    if item not in totals:
-                        totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                    totals[item]['quantity'] += float(row['LF'])
-        
-        for idx, row in st.session_state.measurements['leaders'].iterrows():
-            if pd.notna(row['Leader Type']) and pd.notna(row['LF']):
-                item = row['Leader Type']
-                if item in service_items and service_items[item]['category'] == 'leaders':
-                    if item not in totals:
-                        totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                    totals[item]['quantity'] += float(row['LF'])
-        
-        for idx, row in st.session_state.measurements['guards'].iterrows():
-            if pd.notna(row['Guard Type']) and pd.notna(row['LF']):
-                item = row['Guard Type']
-                if item in service_items and service_items[item]['category'] == 'guards':
-                    if item not in totals:
-                        totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                    totals[item]['quantity'] += float(row['LF'])
-    
-    elif service == 'stone':
-        for idx, row in st.session_state.measurements['stone_flats'].iterrows():
-            if pd.notna(row['Total SF']):
-                item = 'Stone Flats'
-                if item not in totals:
-                    totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                totals[item]['quantity'] += float(row['Total SF'])
-        
-        for idx, row in st.session_state.measurements['stone_corners'].iterrows():
-            if pd.notna(row['LF']):
-                item = 'Stone Corners'
-                if item not in totals:
-                    totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                totals[item]['quantity'] += float(row['LF'])
-        
-        for idx, row in st.session_state.measurements['stone_sills'].iterrows():
-            if pd.notna(row['LF']):
-                item = 'Stone Sills'
-                if item not in totals:
-                    totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                totals[item]['quantity'] += float(row['LF'])
-    
-    elif service == 'stucco':
-        for idx, row in st.session_state.measurements['stucco'].iterrows():
-            if pd.notna(row['Item Type']) and pd.notna(row['SF']):
-                item = row['Item Type']
-                if item in service_items:
-                    if item not in totals:
-                        totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                    totals[item]['quantity'] += float(row['SF'])
-    
-    elif service == 'painting':
-        for idx, row in st.session_state.measurements['painting'].iterrows():
-            if pd.notna(row['Item Type']) and pd.notna(row['SF']):
-                item = row['Item Type']
-                if item in service_items:
-                    if item not in totals:
-                        totals[item] = {'quantity': 0, 'unit_price': service_items[item]['price'], 'total': 0}
-                    totals[item]['quantity'] += float(row['SF'])
-    
-    for item in totals:
-        totals[item]['total'] = totals[item]['quantity'] * totals[item]['unit_price']
-    
-    return totals, sum([t['total'] for t in totals.values()])
+def calc_pricing(sub, rep=False, rig=False):
+    y1 = sub
+    d1 = y1 * 0.10
+    d30 = y1 - d1
+    d2 = d30 * 0.10
+    dof = d30 - d2
+    d3 = dof * 0.03
+    fin = dof - d3
+    if rep: fin += 2100
+    if rig: fin += 1400
+    return {'y1': y1, 'd1': d1, 'd30': d30, 'd2': d2, 'dof': dof, 'd3': d3, 'rep': 2100 if rep else 0, 'rig': 1400 if rig else 0, 'fin': fin}
 
-def calculate_pricing_tiers(subtotal, add_repair=False, add_rigging=False):
-    one_year_price = subtotal
-    deduct_10_1 = one_year_price * 0.10
-    thirty_day_price = one_year_price - deduct_10_1
-    deduct_10_2 = thirty_day_price * 0.10
-    day_of_price = thirty_day_price - deduct_10_2
-    deduct_3 = day_of_price * 0.03
-    final_price = day_of_price - deduct_3
-    if add_repair:
-        final_price += 2100
-    if add_rigging:
-        final_price += 1400
-    return {
-        'one_year_price': one_year_price,
-        'deduct_10_1': deduct_10_1,
-        'thirty_day_price': thirty_day_price,
-        'deduct_10_2': deduct_10_2,
-        'day_of_price': day_of_price,
-        'deduct_3': deduct_3,
-        'repair_added': 2100 if add_repair else 0,
-        'rigging_added': 1400 if add_rigging else 0,
-        'final_sell_price': final_price
-    }
-
-def generate_pdf(service, totals, pricing, customer_info):
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=letter)
+def gen_pdf(svc, tots, prc, cust):
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter)
     story = []
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=24, textColor=colors.HexColor('#2E5CB8'), spaceAfter=30, alignment=1)
-    story.append(Paragraph(f"{SERVICE_DATA[service]['name']} Estimate", title_style))
-    info_data = [['Customer:', customer_info['customer_name']], ['Address:', customer_info['project_address']], ['Sales Rep:', customer_info['sales_rep']], ['Date:', datetime.now().strftime('%B %d, %Y')]]
-    info_table = Table(info_data, colWidths=[1.5*inch, 4.5*inch])
-    info_table.setStyle(TableStyle([('FONT', (0, 0), (-1, -1), 'Helvetica', 10), ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10), ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2E5CB8')), ('ALIGN', (0, 0), (-1, -1), 'LEFT'), ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('BOTTOMPADDING', (0, 0), (-1, -1), 12)]))
-    story.append(info_table)
+    story.append(Paragraph(f"{SERVICE_DATA[svc]['name']} Estimate", styles['Title']))
+    story.append(Spacer(1, 0.2*inch))
+    info_data = [['Customer:', cust['customer_name']], ['Address:', cust['project_address']], ['Sales Rep:', cust['sales_rep']], ['Date:', datetime.now().strftime('%B %d, %Y')]]
+    info_t = Table(info_data, colWidths=[1.5*inch, 4.5*inch])
+    info_t.setStyle(TableStyle([('FONT', (0, 0), (-1, -1), 'Helvetica', 10), ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10)]))
+    story.append(info_t)
     story.append(Spacer(1, 0.3*inch))
     story.append(Paragraph("Items", styles['Heading2']))
     items_data = [['Item', 'Quantity', 'Unit Price', 'Total']]
-    for item, values in totals.items():
-        if values['quantity'] > 0:
-            items_data.append([item, f"{values['quantity']:.2f}", f"${values['unit_price']:.2f}", f"${values['total']:.2f}"])
-    items_table = Table(items_data, colWidths=[3*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    items_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke), ('ALIGN', (0, 0), (-1, -1), 'LEFT'), ('ALIGN', (1, 0), (-1, -1), 'RIGHT'), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 11), ('FONT', (0, 1), (-1, -1), 'Helvetica', 10), ('BOTTOMPADDING', (0, 0), (-1, 0), 12), ('GRID', (0, 0), (-1, -1), 0.5, colors.grey)]))
-    story.append(items_table)
+    for i, v in tots.items():
+        if v['qty'] > 0: items_data.append([i, f"{v['qty']:.2f}", f"${v['price']:.2f}", f"${v['total']:.2f}"])
+    items_t = Table(items_data, colWidths=[3*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+    items_t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey), ('GRID', (0, 0), (-1, -1), 0.5, colors.black)]))
+    story.append(items_t)
     story.append(Spacer(1, 0.3*inch))
-    story.append(Paragraph("Pricing Calculation", styles['Heading2']))
-    pricing_data = [['1 Year Price', f"${pricing['one_year_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"], ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"], ['Day of Price', f"${pricing['day_of_price']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"]]
-    if pricing['repair_added'] > 0:
-        pricing_data.append(['Add: Repair', f"${pricing['repair_added']:.2f}"])
-    if pricing['rigging_added'] > 0:
-        pricing_data.append(['Add: Rigging', f"${pricing['rigging_added']:.2f}"])
-    pricing_data.append(['FINAL SELL PRICE', f"${pricing['final_sell_price']:.2f}"])
-    pricing_table = Table(pricing_data, colWidths=[4*inch, 2*inch])
-    pricing_table.setStyle(TableStyle([('ALIGN', (0, 0), (-1, -1), 'LEFT'), ('ALIGN', (1, 0), (1, -1), 'RIGHT'), ('FONT', (0, 0), (-1, -2), 'Helvetica', 10), ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 12), ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2E5CB8')), ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#2E5CB8')), ('BOTTOMPADDING', (0, 0), (-1, -1), 8)]))
-    story.append(pricing_table)
-    if service in ['gutters', 'stone']:
-        story.append(Spacer(1, 0.3*inch))
-        story.append(Paragraph("Contract Specifications", styles['Heading2']))
-        for spec in SERVICE_DATA[service]['contract_specs']:
-            story.append(Paragraph(f"○ {spec}", styles['Normal']))
-            story.append(Spacer(1, 0.1*inch))
+    story.append(Paragraph("Pricing", styles['Heading2']))
+    prc_data = [['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3%', f"(${prc['d3']:.2f})"]]
+    if prc['rep'] > 0: prc_data.append(['Add: Repair', f"${prc['rep']:.2f}"])
+    if prc['rig'] > 0: prc_data.append(['Add: Rigging', f"${prc['rig']:.2f}"])
+    prc_data.append(['FINAL PRICE', f"${prc['fin']:.2f}"])
+    prc_t = Table(prc_data, colWidths=[4*inch, 2*inch])
+    prc_t.setStyle(TableStyle([('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 12), ('LINEABOVE', (0, -1), (-1, -1), 2, colors.black)]))
+    story.append(prc_t)
     doc.build(story)
-    buffer.seek(0)
-    return buffer
+    buf.seek(0)
+    return buf
 
-st.title("🏗️ Construction Pricing Calculator")
+st.title("🏗️ Garden State Brickface & Siding Pricing Calculator")
 st.markdown("---")
 
 tabs = st.tabs(["Gutters & Leaders", "Stone Veneer", "Stucco Painting", "House Painting"])
 
 with tabs[0]:
-    st.session_state.current_service = 'gutters'
-    st.subheader("Gutter Measurements")
-    gutters_df = st.data_editor(st.session_state.measurements['gutters'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Gutter Type": st.column_config.SelectboxColumn("Gutter Type", options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']), "LF": st.column_config.NumberColumn("LF", format="%.2f")}, hide_index=True, use_container_width=True, key="gutters_editor")
-    st.session_state.measurements['gutters'] = gutters_df
-    st.subheader("Leader Measurements")
-    leaders_df = st.data_editor(st.session_state.measurements['leaders'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Leader Type": st.column_config.SelectboxColumn("Leader Type", options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']), "LF": st.column_config.NumberColumn("LF", format="%.2f")}, hide_index=True, use_container_width=True, key="leaders_editor")
-    st.session_state.measurements['leaders'] = leaders_df
-    st.subheader("Gutter Guard Measurements")
-    guards_df = st.data_editor(st.session_state.measurements['guards'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Guard Type": st.column_config.SelectboxColumn("Guard Type", options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']), "LF": st.column_config.NumberColumn("LF", format="%.2f")}, hide_index=True, use_container_width=True, key="guards_editor")
-    st.session_state.measurements['guards'] = guards_df
-    st.info("\n\n".join([f"**{notice}**" for notice in SERVICE_DATA['gutters']['notices']]))
-    if st.button("Calculate Gutters & Leaders", key="calc_gutters"):
-        totals, subtotal = calculate_totals('gutters')
-        st.subheader("Pricing Summary")
-        pricing_df = pd.DataFrame([{'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 'Total': f"${v['total']:.2f}"} for k, v in totals.items() if v['quantity'] > 0])
-        st.dataframe(pricing_df, use_container_width=True, hide_index=True)
-        st.subheader("Project Calculation")
-        pricing = calculate_pricing_tiers(subtotal)
-        calc_df = pd.DataFrame([['1 Year Price', f"${pricing['one_year_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"], ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"], ['Day of Price', f"${pricing['day_of_price']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"], ['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]], columns=['Description', 'Amount'])
-        st.dataframe(calc_df, use_container_width=True, hide_index=True)
-
-with tabs[1]:
-    st.session_state.current_service = 'stone'
+    st.warning("⚠️ 50% deposit required | JOB MINIMUM: $650 (combined) / $1,150 (stand-alone)")
+    st.subheader("Measurements")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.subheader("Stone Flats")
-        stone_flats_df = st.data_editor(st.session_state.measurements['stone_flats'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "Total SF": st.column_config.NumberColumn("Total SF", disabled=True, format="%.2f")}, hide_index=True, use_container_width=True, key="stone_flats_editor")
-        for idx, row in stone_flats_df.iterrows():
-            stone_flats_df.at[idx, 'Total SF'] = calculate_stone_sf_or_lf(row['Width'], row['Height'], 'flats')
-        st.session_state.measurements['stone_flats'] = stone_flats_df
-        st.metric("Total Flats SF", f"{stone_flats_df['Total SF'].sum():.2f}")
+        st.markdown("**GUTTERS**")
+        g_df = st.data_editor(st.session_state.measurements['gutters'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Gutter Type": st.column_config.SelectboxColumn(options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']), "LF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="g_ed")
+        st.session_state.measurements['gutters'] = g_df
     with col2:
-        st.subheader("Stone Corners")
-        stone_corners_df = st.data_editor(st.session_state.measurements['stone_corners'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn("LF", disabled=True, format="%.2f")}, hide_index=True, use_container_width=True, key="stone_corners_editor")
-        for idx, row in stone_corners_df.iterrows():
-            stone_corners_df.at[idx, 'LF'] = calculate_stone_sf_or_lf(row['Width'], row['Height'], 'corners')
-        st.session_state.measurements['stone_corners'] = stone_corners_df
-        st.metric("Total Corners LF", f"{stone_corners_df['LF'].sum():.2f}")
+        st.markdown("**LEADERS**")
+        l_df = st.data_editor(st.session_state.measurements['leaders'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Leader Type": st.column_config.SelectboxColumn(options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']), "LF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="l_ed")
+        st.session_state.measurements['leaders'] = l_df
     with col3:
-        st.subheader("Stone Sills")
-        stone_sills_df = st.data_editor(st.session_state.measurements['stone_sills'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn("LF", disabled=True, format="%.2f")}, hide_index=True, use_container_width=True, key="stone_sills_editor")
-        for idx, row in stone_sills_df.iterrows():
-            stone_sills_df.at[idx, 'LF'] = calculate_stone_sf_or_lf(row['Width'], row['Height'], 'sills')
-        st.session_state.measurements['stone_sills'] = stone_sills_df
-        st.metric("Total Sills LF", f"{stone_sills_df['LF'].sum():.2f}")
-    if st.button("Calculate Stone Veneer", key="calc_stone"):
-        totals, subtotal = calculate_totals('stone')
-        st.subheader("Pricing Summary")
-        pricing_df = pd.DataFrame([{'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 'Total': f"${v['total']:.2f}"} for k, v in totals.items() if v['quantity'] > 0])
-        st.dataframe(pricing_df, use_container_width=True, hide_index=True)
-        st.subheader("Project Calculation")
-        subtotal_with_delivery = subtotal + SERVICE_DATA['stone']['delivery_fee']
-        pricing = calculate_pricing_tiers(subtotal_with_delivery)
-        calc_df = pd.DataFrame([['Subtotal', f"${subtotal:.2f}"], ['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"], ['1 Year Price', f"${pricing['one_year_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"], ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"], ['Day of Price', f"${pricing['day_of_price']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"], ['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]], columns=['Description', 'Amount'])
-        st.dataframe(calc_df, use_container_width=True, hide_index=True)
-        st.info("### Contract Specifications\n\n" + "\n\n".join([f"○ {spec}" for spec in SERVICE_DATA['stone']['contract_specs']]))
+        st.markdown("**GUTTER GUARDS**")
+        gg_df = st.data_editor(st.session_state.measurements['guards'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Guard Type": st.column_config.SelectboxColumn(options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']), "LF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="gg_ed")
+        st.session_state.measurements['guards'] = gg_df
+    
+    if st.button("Calculate", key="calc_g"):
+        tots, sub = calc_totals('gutters')
+        st.markdown("### Pricing Tables")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("**Gutters (Standard) .27 Gauge**")
+            g_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
+            st.dataframe(g_price, hide_index=True)
+        with col2:
+            st.markdown("**Leaders (Standard) .19 Gauge**")
+            l_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
+            st.dataframe(l_price, hide_index=True)
+        with col3:
+            st.markdown("**Gutter Guards**")
+            gg_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']], columns=['Item', 'LF/Quantity', 'Price Per Ft', 'Price'])
+            st.dataframe(gg_price, hide_index=True)
+        st.markdown("### Project Calculation")
+        prc = calc_pricing(sub)
+        calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"], ['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])
+        st.dataframe(calc_df, hide_index=True)
+
+with tabs[1]:
+    st.subheader("Stone Veneer Measurements")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Stone Flats**")
+        sf_df = st.data_editor(st.session_state.measurements['stone_flats'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "Total SF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="sf_ed")
+        for idx, r in sf_df.iterrows():
+            sf_df.at[idx, 'Total SF'] = calc_stone(r['Width'], r['Height'], 'flats')
+        st.session_state.measurements['stone_flats'] = sf_df
+        st.metric("Total SF", f"{sf_df['Total SF'].sum():.2f}")
+    with col2:
+        st.markdown("**Stone Corners**")
+        sc_df = st.data_editor(st.session_state.measurements['stone_corners'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="sc_ed")
+        for idx, r in sc_df.iterrows():
+            sc_df.at[idx, 'LF'] = calc_stone(r['Width'], r['Height'], 'corners')
+        st.session_state.measurements['stone_corners'] = sc_df
+        st.metric("Total LF", f"{sc_df['LF'].sum():.2f}")
+    with col3:
+        st.markdown("**Stone Sills**")
+        ss_df = st.data_editor(st.session_state.measurements['stone_sills'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="ss_ed")
+        for idx, r in ss_df.iterrows():
+            ss_df.at[idx, 'LF'] = calc_stone(r['Width'], r['Height'], 'sills')
+        st.session_state.measurements['stone_sills'] = ss_df
+        st.metric("Total LF", f"{ss_df['LF'].sum():.2f}")
+    
+    if st.button("Calculate", key="calc_s"):
+        tots, sub = calc_totals('stone')
+        st.markdown("### Pricing Table")
+        stone_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Price Per Unit', 'Total'])
+        st.dataframe(stone_price, hide_index=True)
+        st.markdown("### Project Calculation")
+        sub_del = sub + SERVICE_DATA['stone']['delivery_fee']
+        prc = calc_pricing(sub_del)
+        calc_df = pd.DataFrame([['Subtotal', f"${sub:.2f}"], ['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"], ['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"], ['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])
+        st.dataframe(calc_df, hide_index=True)
 
 with tabs[2]:
-    st.session_state.current_service = 'stucco'
     st.subheader("Stucco Painting Measurements")
-    stucco_df = st.data_editor(st.session_state.measurements['stucco'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn("Item Type", options=list(SERVICE_DATA['stucco']['items'].keys())), "SF": st.column_config.NumberColumn("SF", format="%.2f")}, hide_index=True, use_container_width=True, key="stucco_editor")
-    st.session_state.measurements['stucco'] = stucco_df
+    st_df = st.data_editor(st.session_state.measurements['stucco'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['stucco']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="st_ed")
+    st.session_state.measurements['stucco'] = st_df
     st.subheader("Miscellaneous Items")
     misc_cols = st.columns(2)
-    misc_index = 0
-    for item, details in SERVICE_DATA['stucco']['misc_items'].items():
-        with misc_cols[misc_index % 2]:
-            quantity = st.number_input(f"{item} ({details['unit']}) - ${details['price']:.2f}", min_value=0.0, value=st.session_state.misc_quantities.get(item, 0.0), step=1.0, key=f"misc_{item}")
-            st.session_state.misc_quantities[item] = quantity
-        misc_index += 1
-    st.subheader("Service Minimums")
-    minimums_df = pd.DataFrame([['LOXON PAINTING', f"${SERVICE_DATA['stucco']['minimums']['LOXON PAINTING']:,}"], ['CAULKING', f"${SERVICE_DATA['stucco']['minimums']['CAULKING']:,}"]], columns=['Service', 'Minimum Amount'])
-    st.dataframe(minimums_df, use_container_width=True, hide_index=True)
+    idx = 0
+    for itm, det in SERVICE_DATA['stucco']['misc_items'].items():
+        with misc_cols[idx % 2]:
+            q = st.number_input(f"{itm} ({det['unit']}) - ${det['price']:.2f}", min_value=0.0, value=st.session_state.misc_quantities.get(itm, 0.0), step=1.0, key=f"misc_{itm}")
+            st.session_state.misc_quantities[itm] = q
+        idx += 1
     col1, col2 = st.columns(2)
     with col1:
-        repair_addon = st.checkbox("Add Repair - $2,100", key="stucco_repair")
+        rep = st.checkbox("Add Repair - $2,100", key="st_rep")
     with col2:
-        rigging_addon = st.checkbox("Add Rigging - $1,400", key="stucco_rigging")
-    if st.button("Calculate Stucco Painting", key="calc_stucco"):
-        totals, subtotal = calculate_totals('stucco')
-        for item, quantity in st.session_state.misc_quantities.items():
-            if quantity > 0:
-                price = SERVICE_DATA['stucco']['misc_items'][item]['price']
-                totals[item] = {'quantity': quantity, 'unit_price': price, 'total': quantity * price}
-                subtotal += quantity * price
-        st.subheader("Pricing Summary")
-        pricing_df = pd.DataFrame([{'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 'Total': f"${v['total']:.2f}"} for k, v in totals.items() if v['quantity'] > 0])
-        st.dataframe(pricing_df, use_container_width=True, hide_index=True)
-        st.subheader("Project Calculation")
-        pricing = calculate_pricing_tiers(subtotal, repair_addon, rigging_addon)
-        calc_df = pd.DataFrame([['1 Year Price', f"${pricing['one_year_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"], ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"], ['Day of Price', f"${pricing['day_of_price']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"]], columns=['Description', 'Amount'])
-        if repair_addon:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${pricing['repair_added']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        if rigging_addon:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${pricing['rigging_added']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, use_container_width=True, hide_index=True)
+        rig = st.checkbox("Add Rigging - $1,400", key="st_rig")
+    
+    if st.button("Calculate", key="calc_st"):
+        tots, sub = calc_totals('stucco')
+        for itm, q in st.session_state.misc_quantities.items():
+            if q > 0:
+                p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
+                tots[itm] = {'qty': q, 'price': p, 'total': q * p}
+                sub += q * p
+        st.markdown("### Pricing Table")
+        stucco_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
+        st.dataframe(stucco_price, hide_index=True)
+        st.markdown("### Project Calculation")
+        prc = calc_pricing(sub, rep, rig)
+        calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
+        if rep: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
+        if rig: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
+        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
+        st.dataframe(calc_df, hide_index=True)
 
 with tabs[3]:
-    st.session_state.current_service = 'painting'
     st.subheader("House Painting Measurements")
-    painting_df = st.data_editor(st.session_state.measurements['painting'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn("Location", options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn("Item Type", options=list(SERVICE_DATA['painting']['items'].keys())), "SF": st.column_config.NumberColumn("Quantity/SF", format="%.2f")}, hide_index=True, use_container_width=True, key="painting_editor")
-    st.session_state.measurements['painting'] = painting_df
-    st.subheader("Service Minimums")
-    minimums_df = pd.DataFrame([['HOUSE PAINTING', f"${SERVICE_DATA['painting']['minimums']['HOUSE PAINTING']:,}"]], columns=['Service', 'Minimum Amount'])
-    st.dataframe(minimums_df, use_container_width=True, hide_index=True)
+    p_df = st.data_editor(st.session_state.measurements['painting'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['painting']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="p_ed")
+    st.session_state.measurements['painting'] = p_df
     col1, col2 = st.columns(2)
     with col1:
-        repair_addon = st.checkbox("Add Repair - $2,100", key="painting_repair")
+        rep = st.checkbox("Add Repair - $2,100", key="p_rep")
     with col2:
-        rigging_addon = st.checkbox("Add Rigging - $1,400", key="painting_rigging")
-    if st.button("Calculate House Painting", key="calc_painting"):
-        totals, subtotal = calculate_totals('painting')
-        st.subheader("Pricing Summary")
-        pricing_df = pd.DataFrame([{'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 'Total': f"${v['total']:.2f}"} for k, v in totals.items() if v['quantity'] > 0])
-        st.dataframe(pricing_df, use_container_width=True, hide_index=True)
-        st.subheader("Project Calculation")
-        pricing = calculate_pricing_tiers(subtotal, repair_addon, rigging_addon)
-        calc_df = pd.DataFrame([['1 Year Price', f"${pricing['one_year_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"], ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"], ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"], ['Day of Price', f"${pricing['day_of_price']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"]], columns=['Description', 'Amount'])
-        if repair_addon:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${pricing['repair_added']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        if rigging_addon:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${pricing['rigging_added']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, use_container_width=True, hide_index=True)
+        rig = st.checkbox("Add Rigging - $1,400", key="p_rig")
+    
+    if st.button("Calculate", key="calc_p"):
+        tots, sub = calc_totals('painting')
+        st.markdown("### Pricing Table")
+        paint_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
+        st.dataframe(paint_price, hide_index=True)
+        st.markdown("### Project Calculation")
+        prc = calc_pricing(sub, rep, rig)
+        calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
+        if rep: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
+        if rig: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
+        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
+        st.dataframe(calc_df, hide_index=True)
 
 st.markdown("---")
 st.header("Generate PDF Estimate")
 col1, col2, col3 = st.columns(3)
 with col1:
-    customer_name = st.text_input("Customer Name", value=st.session_state.customer_info['customer_name'])
-    st.session_state.customer_info['customer_name'] = customer_name
+    cname = st.text_input("Customer Name", value=st.session_state.customer_info['customer_name'])
+    st.session_state.customer_info['customer_name'] = cname
 with col2:
-    project_address = st.text_input("Project Address", value=st.session_state.customer_info['project_address'])
-    st.session_state.customer_info['project_address'] = project_address
+    addr = st.text_input("Project Address", value=st.session_state.customer_info['project_address'])
+    st.session_state.customer_info['project_address'] = addr
 with col3:
-    sales_rep = st.text_input("Sales Representative", value=st.session_state.customer_info['sales_rep'])
-    st.session_state.customer_info['sales_rep'] = sales_rep
+    srep = st.text_input("Sales Representative", value=st.session_state.customer_info['sales_rep'])
+    st.session_state.customer_info['sales_rep'] = srep
 
-if st.button("Generate PDF Estimate", type="primary", use_container_width=True):
-    if not customer_name or not project_address or not sales_rep:
-        st.error("Please fill in all customer information fields.")
+svc_sel = st.selectbox("Select Service for PDF", ["gutters", "stone", "stucco", "painting"], format_func=lambda x: SERVICE_DATA[x]['name'])
+
+if st.button("Generate PDF", type="primary"):
+    if not cname or not addr or not srep:
+        st.error("Fill in all fields")
     else:
-        with st.spinner("Generating PDF..."):
-            service = st.session_state.current_service
-            totals, subtotal = calculate_totals(service)
-            if service == 'stucco':
-                for item, quantity in st.session_state.misc_quantities.items():
-                    if quantity > 0:
-                        price = SERVICE_DATA['stucco']['misc_items'][item]['price']
-                        totals[item] = {'quantity': quantity, 'unit_price': price, 'total': quantity * price}
-                        subtotal += quantity * price
-            repair = st.session_state.get(f'{service}_repair', False)
-            rigging = st.session_state.get(f'{service}_rigging', False)
-            if service == 'stone':
-                subtotal += SERVICE_DATA['stone']['delivery_fee']
-            pricing = calculate_pricing_tiers(subtotal, repair, rigging)
-            pdf_buffer = generate_pdf(service, totals, pricing, st.session_state.customer_info)
-            filename = f"{customer_name.replace(' ', '_')}_{SERVICE_DATA[service]['name'].replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
-            st.success("PDF generated successfully!")
-            st.download_button(label="Download PDF Estimate", data=pdf_buffer, file_name=filename, mime="application/pdf", type="primary", use_container_width=True)
+        with st.spinner("Generating..."):
+            tots, sub = calc_totals(svc_sel)
+            if svc_sel == 'stucco':
+                for itm, q in st.session_state.misc_quantities.items():
+                    if q > 0:
+                        p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
+                        tots[itm] = {'qty': q, 'price': p, 'total': q * p}
+                        sub += q * p
+            rep = st.session_state.get(f'{svc_sel}_rep', False)
+            rig = st.session_state.get(f'{svc_sel}_rig', False)
+            if svc_sel == 'stone':
+                sub += SERVICE_DATA['stone']['delivery_fee']
+            prc = calc_pricing(sub, rep, rig)
+            pdf = gen_pdf(svc_sel, tots, prc, st.session_state.customer_info)
+            fname = f"{cname.replace(' ', '_')}_{srep.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+            st.success("PDF generated!")
+            st.download_button("Download PDF", pdf, fname, "application/pdf", type="primary")
 
 st.divider()
-st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit")
+st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")
