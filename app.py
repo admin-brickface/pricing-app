@@ -23,6 +23,16 @@ color: #000000;
 .stDataFrame, [data-testid="stDataFrame"] {
 background-color: #FFFFFF;
 }
+.stDataFrame table {
+background-color: #F0F2F6 !important;
+}
+.stDataFrame thead tr th {
+background-color: #E8EAF0 !important;
+color: #000000 !important;
+}
+.stDataFrame tbody tr {
+background-color: #F0F2F6 !important;
+}
 h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
 color: #000000 !important;
 }
@@ -48,20 +58,52 @@ border-color: #E0E0E0;
 </style>
 """, unsafe_allow_html=True)
 
+if 'current_service' not in st.session_state:
+    st.session_state.current_service = 'gutters'
+
 if 'measurements' not in st.session_state:
     st.session_state.measurements = {
         'gutters': pd.DataFrame(columns=['Location', 'Gutter Type', 'LF']),
         'leaders': pd.DataFrame(columns=['Location', 'Leader Type', 'LF']),
-        'guards': pd.DataFrame(columns=['Location', 'Guard Type', 'LF']),
-        'stone_flats': pd.DataFrame(columns=['Location', 'Width', 'Height', 'Total SF']),
-        'stone_corners': pd.DataFrame(columns=['Location', 'Width', 'Height', 'LF']),
-        'stone_sills': pd.DataFrame(columns=['Location', 'Width', 'Height', 'LF']),
-        'stucco': pd.DataFrame(columns=['Location', 'Item Type', 'SF']),
-        'painting': pd.DataFrame(columns=['Location', 'Item Type', 'SF'])
+        'guards': pd.DataFrame(columns=['Location', 'Guard Type', 'LF'])
     }
 
-if 'misc_quantities' not in st.session_state:
-    st.session_state.misc_quantities = {}
+if 'stone_measurements' not in st.session_state:
+    st.session_state.stone_measurements = {
+        'flats': pd.DataFrame([[''] * 4 for _ in range(12)], columns=['Location', 'Width', 'Height', 'Total SF']),
+        'corners': pd.DataFrame([[''] * 2 for _ in range(12)], columns=['Location', 'LF']),
+        'sills': pd.DataFrame([[''] * 2 for _ in range(12)], columns=['Location', 'LF']),
+        'outs': pd.DataFrame([[''] * 4 for _ in range(8)], columns=['Location', 'Width', 'Height', 'Total'])
+    }
+
+if 'stucco_measurements' not in st.session_state:
+    st.session_state.stucco_measurements = {
+        'walls': pd.DataFrame([[''] * 5 for _ in range(28)], columns=['Location', 'Width', 'x', 'Height', 'Total SF']),
+        'window_trim': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'door_trim': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'soffit': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'fascia': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'quions': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Quantity']),
+        'other_trim': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Quantity'])
+    }
+
+if 'painting_measurements' not in st.session_state:
+    st.session_state.painting_measurements = {
+        'walls': pd.DataFrame([[''] * 5 for _ in range(28)], columns=['Location', 'Width', 'x', 'Height', 'Total SF']),
+        'window_trim': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Openings']),
+        'door_trim': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Openings']),
+        'soffit': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'fascia': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'LF']),
+        'entry_doors': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Openings']),
+        'garage_doors': pd.DataFrame([[''] * 2 for _ in range(8)], columns=['Location', 'Openings'])
+    }
+
+if 'stone_pricing' not in st.session_state:
+    st.session_state.stone_pricing = {
+        'demolition': pd.DataFrame([['Remove vinyl or aluminum siding', '', 237], ['Remove wood siding (clapboard)', '', 267], ['Remove wood siding (wood shake)', '', 297], ['Remove EIFS up to 2" only', '', 400]], columns=['Description', 'Per Square', 'Price']),
+        'debris': pd.DataFrame([['Debris removal under 4 squares (REQUIRED even if no demo)', '', 830], ['10 yard dumpster (removal from 4 to 10 squares)', '', 1542], ['20 yard dumpster (removal from 11 to 20 squares)', '', 1868]], columns=['Description', 'Quantity', 'Price']),
+        'misc': pd.DataFrame([['Wrap Corner 4" (Wood or Vinyl Siding)', 'Per 8\' Corner', '', 297], ['Limestone Treads (up to 12" Deep)', 'LF', '', 128], ['Limestone Treads (up to 14" Deep)', 'LF', '', 144], ['Cement Pad (Up to 20sf) Demo/New', 'Per Item', '', 890], ['Chimney Scaffolding Fee', 'Full chimney or on roof', '', 741], ['Stainless Steel Chimney Cover', 'Per Item', '', 1605], ['1/2" Plywood Replacement', 'Per Item', '', 374]], columns=['Description', 'Unit', 'SF/LF/Q', 'Price'])
+    }
 
 if 'customer_info' not in st.session_state:
     st.session_state.customer_info = {'customer_name': '', 'project_address': '', 'sales_rep': ''}
@@ -92,70 +134,20 @@ SERVICE_DATA = {
             'Leafshelter 6" - All Colors': {'price': 21, 'category': 'guards'},
             'Strap Hangers per LF': {'price': 4, 'category': 'guards'}
         }
-    },
-    'stone': {
-        'name': 'Stone Veneer',
-        'items': {'Stone Flats': {'price': 28}, 'Stone Corners': {'price': 28}, 'Stone Sills': {'price': 28}},
-        'delivery_fee': 222
-    },
-    'stucco': {
-        'name': 'Stucco Painting',
-        'items': {'Wall': {'price': 8.36}, 'Soffit': {'price': 8.36}, 'Column': {'price': 8.36}, 'Beam': {'price': 8.36}},
-        'misc_items': {
-            'EIFS Repair': {'price': 60, 'unit': 'SF'},
-            'BCMA (Fiberglass, Basecoat, Acrylic Stucco)': {'price': 17.59, 'unit': 'SF'},
-            'Remove and Re-Install Existing Shutters': {'price': 145, 'unit': 'Pair'},
-            'Remove, Paint and Re-Install Shutters': {'price': 290, 'unit': 'Pair'},
-            'Stainless Steel Chimney Cover': {'price': 1509, 'unit': 'Item'},
-            'Plywood (demo, debris, install 1 sheet) 32sf': {'price': 439, 'unit': 'Item'},
-            'Remove and Re-Install Existing Gutters': {'price': 6, 'unit': 'LF'},
-            'Additional Rigging (Caulking Only)': {'price': 435, 'unit': 'Side'},
-            'Clear Sealer, Ladders, Powerwash': {'price': 7, 'unit': 'SF'},
-            'Additional Heavy Duty Powerwash': {'price': 2, 'unit': 'SF'},
-            'Additional stucco crack repair above 50lf': {'price': 7, 'unit': 'LF'},
-            'Spot Point Brick': {'price': 29, 'unit': 'SF'},
-            'Full Cut and Re-Point (Under 500sf)': {'price': 29, 'unit': 'SF'}
-        }
-    },
-    'painting': {
-        'name': 'House Painting',
-        'items': {'Exterior Wall': {'price': 4.18}, 'Trim': {'price': 4.18}, 'Door': {'price': 125}, 'Window': {'price': 75}}
     }
 }
 
-def calc_stone(w, h, t='flats'):
-    if pd.isna(w) or pd.isna(h):
-        return 0
-    return (float(w) * float(h)) / 144 if t == 'flats' else float(w) / 12
-
-def calc_totals(svc):
+def calc_totals_gutters():
     tots = {}
-    if svc == 'gutters':
-        for cat in ['gutters', 'leaders', 'guards']:
-            for _, r in st.session_state.measurements[cat].iterrows():
-                col = 'Gutter Type' if cat == 'gutters' else ('Leader Type' if cat == 'leaders' else 'Guard Type')
-                if pd.notna(r[col]) and pd.notna(r['LF']):
-                    itm = r[col]
-                    if itm in SERVICE_DATA['gutters']['items'] and SERVICE_DATA['gutters']['items'][itm]['category'] == cat:
-                        if itm not in tots:
-                            tots[itm] = {'qty': 0, 'price': SERVICE_DATA['gutters']['items'][itm]['price'], 'total': 0}
-                        tots[itm]['qty'] += float(r['LF'])
-    elif svc == 'stone':
-        for k, df_key in [('Stone Flats', 'stone_flats'), ('Stone Corners', 'stone_corners'), ('Stone Sills', 'stone_sills')]:
-            col = 'Total SF' if k == 'Stone Flats' else 'LF'
-            for _, r in st.session_state.measurements[df_key].iterrows():
-                if pd.notna(r[col]):
-                    if k not in tots:
-                        tots[k] = {'qty': 0, 'price': SERVICE_DATA['stone']['items'][k]['price'], 'total': 0}
-                    tots[k]['qty'] += float(r[col])
-    else:
-        for _, r in st.session_state.measurements[svc].iterrows():
-            if pd.notna(r['Item Type']) and pd.notna(r['SF']):
-                itm = r['Item Type']
-                if itm in SERVICE_DATA[svc]['items']:
+    for cat in ['gutters', 'leaders', 'guards']:
+        for _, r in st.session_state.measurements[cat].iterrows():
+            col = 'Gutter Type' if cat == 'gutters' else ('Leader Type' if cat == 'leaders' else 'Guard Type')
+            if pd.notna(r[col]) and pd.notna(r['LF']):
+                itm = r[col]
+                if itm in SERVICE_DATA['gutters']['items'] and SERVICE_DATA['gutters']['items'][itm]['category'] == cat:
                     if itm not in tots:
-                        tots[itm] = {'qty': 0, 'price': SERVICE_DATA[svc]['items'][itm]['price'], 'total': 0}
-                    tots[itm]['qty'] += float(r['SF'])
+                        tots[itm] = {'qty': 0, 'price': SERVICE_DATA['gutters']['items'][itm]['price'], 'total': 0}
+                    tots[itm]['qty'] += float(r['LF'])
     for i in tots:
         tots[i]['total'] = tots[i]['qty'] * tots[i]['price']
     return tots, sum([t['total'] for t in tots.values()])
@@ -174,90 +166,13 @@ def calc_pricing(sub, rep=False, rig=False):
         fin += 1400
     return {'y1': y1, 'd1': d1, 'd30': d30, 'd2': d2, 'dof': dof, 'd3': d3, 'rep': 2100 if rep else 0, 'rig': 1400 if rig else 0, 'fin': fin}
 
-def gen_pdf(svc, tots, prc, cust, sub=0):
-    buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter)
-    story = []
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=24, textColor=colors.HexColor('#2E5CB8'), alignment=1)
-    story.append(Paragraph("Garden State Brickface & Siding<br/>" + SERVICE_DATA[svc]['name'] + " Estimate", title_style))
-    story.append(Spacer(1, 0.3*inch))
-    info_data = [['Customer:', cust['customer_name']], ['Address:', cust['project_address']], ['Sales Rep:', cust['sales_rep']], ['Date:', datetime.now().strftime('%B %d, %Y')]]
-    info_t = Table(info_data, colWidths=[1.5*inch, 4.5*inch])
-    info_t.setStyle(TableStyle([('FONT', (0, 0), (-1, -1), 'Helvetica', 10), ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10), ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2E5CB8'))]))
-    story.append(info_t)
-    story.append(Spacer(1, 0.3*inch))
-    story.append(Paragraph("Pricing Tables", styles['Heading2']))
-    story.append(Spacer(1, 0.1*inch))
-    if svc == 'gutters':
-        story.append(Paragraph("Gutters (Standard) .27 Gauge", styles['Heading3']))
-        g_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']
-        g_data = [['Item', 'Linear Ft', 'Price Per Ft', 'Price']]
-        for itm in g_items:
-            qty = tots.get(itm, {'qty': 0})['qty']
-            price = SERVICE_DATA['gutters']['items'][itm]['price']
-            total = tots.get(itm, {'total': 0})['total']
-            g_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
-        g_table = Table(g_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
-        g_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
-        story.append(g_table)
-        story.append(Spacer(1, 0.2*inch))
-        story.append(Paragraph("Leaders (Standard) .19 Gauge", styles['Heading3']))
-        l_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']
-        l_data = [['Item', 'Linear Ft', 'Price Per Ft', 'Price']]
-        for itm in l_items:
-            qty = tots.get(itm, {'qty': 0})['qty']
-            price = SERVICE_DATA['gutters']['items'][itm]['price']
-            total = tots.get(itm, {'total': 0})['total']
-            l_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
-        l_table = Table(l_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
-        l_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
-        story.append(l_table)
-        story.append(Spacer(1, 0.2*inch))
-        story.append(Paragraph("Gutter Guards", styles['Heading3']))
-        gg_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']
-        gg_data = [['Item', 'LF/Quantity', 'Price Per Ft', 'Price']]
-        for itm in gg_items:
-            qty = tots.get(itm, {'qty': 0})['qty']
-            price = SERVICE_DATA['gutters']['items'][itm]['price']
-            total = tots.get(itm, {'total': 0})['total']
-            gg_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
-        gg_table = Table(gg_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
-        gg_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
-        story.append(gg_table)
-    else:
-        items_data = [['Item', 'Quantity', 'Unit Price', 'Total']]
-        for i, v in tots.items():
-            if v['qty'] > 0:
-                items_data.append([i, f"{v['qty']:.2f}", f"${v['price']:.2f}", f"${v['total']:.2f}"])
-        items_t = Table(items_data, colWidths=[3*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-        items_t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
-        story.append(items_t)
-    story.append(Spacer(1, 0.3*inch))
-    story.append(Paragraph("Project Calculation", styles['Heading2']))
-    prc_data = []
-    if svc == 'stone':
-        prc_data.append(['Subtotal', f"${sub:.2f}"])
-        prc_data.append(['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"])
-    prc_data.extend([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]])
-    if prc['rep'] > 0:
-        prc_data.append(['Add: Repair', f"${prc['rep']:.2f}"])
-    if prc['rig'] > 0:
-        prc_data.append(['Add: Rigging', f"${prc['rig']:.2f}"])
-    prc_data.append(['FINAL SELL PRICE', f"${prc['fin']:.2f}"])
-    prc_t = Table(prc_data, colWidths=[4*inch, 2*inch])
-    prc_t.setStyle(TableStyle([('FONT', (0, 0), (-1, -2), 'Helvetica', 10), ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 14), ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2E5CB8')), ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#2E5CB8')), ('ALIGN', (1, 0), (1, -1), 'RIGHT')]))
-    story.append(prc_t)
-    doc.build(story)
-    buf.seek(0)
-    return buf
-
 st.title("🏗️ Garden State Brickface & Siding Pricing Calculator")
 st.markdown("---")
 
 tabs = st.tabs(["Gutters & Leaders", "Stone Veneer", "Stucco Painting", "House Painting"])
 
 with tabs[0]:
+    st.session_state.current_service = 'gutters'
     st.warning("⚠️ 50% deposit required | JOB MINIMUM: $650 (combined) / $1,150 (stand-alone)")
     st.subheader("Measurements")
     col1, col2, col3 = st.columns(3)
@@ -274,7 +189,7 @@ with tabs[0]:
         gg_df = st.data_editor(st.session_state.measurements['guards'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Guard Type": st.column_config.SelectboxColumn(options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']), "LF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="gg_ed")
         st.session_state.measurements['guards'] = gg_df
     st.markdown("### Pricing Tables")
-    tots, sub = calc_totals('gutters')
+    tots, sub = calc_totals_gutters()
     col1, col2, col3 = st.columns(3)
     with col1:
         st.markdown("**Gutters (Standard) .27 Gauge**")
@@ -295,100 +210,305 @@ with tabs[0]:
         st.dataframe(calc_df, hide_index=True, use_container_width=True)
 
 with tabs[1]:
+    st.session_state.current_service = 'stone'
     st.subheader("Stone Veneer Measurements")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.markdown("**Stone Flats**")
-        sf_df = st.data_editor(st.session_state.measurements['stone_flats'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "Total SF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="sf_ed")
-        for idx, r in sf_df.iterrows():
-            sf_df.at[idx, 'Total SF'] = calc_stone(r['Width'], r['Height'], 'flats')
-        st.session_state.measurements['stone_flats'] = sf_df
-        st.metric("Total SF", f"{sf_df['Total SF'].sum():.2f}")
+        st.markdown("### STONE FLATS")
+        flats_df = st.data_editor(st.session_state.stone_measurements['flats'], hide_index=True, use_container_width=True, key="flats_ed")
+        st.session_state.stone_measurements['flats'] = flats_df
+        st.text_input("Flats SF Subtotal", key="flats_subtotal")
+        st.text_input("Deduct Outs (   )", key="deduct_outs")
+        st.markdown("**Total Flats** (yellow highlight)")
     with col2:
-        st.markdown("**Stone Corners**")
-        sc_df = st.data_editor(st.session_state.measurements['stone_corners'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="sc_ed")
-        for idx, r in sc_df.iterrows():
-            sc_df.at[idx, 'LF'] = calc_stone(r['Width'], r['Height'], 'corners')
-        st.session_state.measurements['stone_corners'] = sc_df
-        st.metric("Total LF", f"{sc_df['LF'].sum():.2f}")
+        st.markdown("### STONE CORNERS")
+        corners_df = st.data_editor(st.session_state.stone_measurements['corners'], hide_index=True, use_container_width=True, key="corners_ed")
+        st.session_state.stone_measurements['corners'] = corners_df
+        st.text_input("Subtotal", key="corners_subtotal")
+        st.info("IF ODD # ROUND UP TO NEAREST EVEN FOOT")
+        st.markdown("**Total Corners** (yellow highlight)")
     with col3:
-        st.markdown("**Stone Sills**")
-        ss_df = st.data_editor(st.session_state.measurements['stone_sills'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"), "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"), "LF": st.column_config.NumberColumn(disabled=True, format="%.2f")}, hide_index=True, key="ss_ed")
-        for idx, r in ss_df.iterrows():
-            ss_df.at[idx, 'LF'] = calc_stone(r['Width'], r['Height'], 'sills')
-        st.session_state.measurements['stone_sills'] = ss_df
-        st.metric("Total LF", f"{ss_df['LF'].sum():.2f}")
-    st.markdown("### Pricing Table")
-    tots, sub = calc_totals('stone')
-    stone_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['stone']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in SERVICE_DATA['stone']['items'].keys()], columns=['Item', 'Quantity', 'Price Per Unit', 'Total'])
-    st.dataframe(stone_price, hide_index=True, use_container_width=True)
-    if st.button("Calculate", key="calc_s"):
-        st.markdown("### Project Calculation")
-        sub_del = sub + SERVICE_DATA['stone']['delivery_fee']
-        prc = calc_pricing(sub_del)
-        calc_df = pd.DataFrame([['Subtotal', f"${sub:.2f}"], ['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"], ['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"], ['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])
-        st.dataframe(calc_df, hide_index=True, use_container_width=True)
+        st.markdown("### STONE SILLS")
+        sills_df = st.data_editor(st.session_state.stone_measurements['sills'], hide_index=True, use_container_width=True, key="sills_ed")
+        st.session_state.stone_measurements['sills'] = sills_df
+        st.text_input("Subtotal", key="sills_subtotal")
+        st.info("IF ODD # ROUND UP TO NEAREST EVEN FOOT")
+        st.markdown("**Total Sills** (yellow highlight)")
+    
+    st.markdown("### OUTS (TAKE 100% OUTS)")
+    outs_df = st.data_editor(st.session_state.stone_measurements['outs'], hide_index=True, use_container_width=True, key="outs_ed")
+    st.session_state.stone_measurements['outs'] = outs_df
+    st.text_input("Total Outs (   )", key="total_outs")
+    
+    st.info("""**STONE VENEER GUIDELINES**
+* Measurements must be tip to tip
+* Brick returns at windows/doors, must include in SF & LF
+* New treads/cap required if existing overhang is not a min of 2 1
+* Charge wrap corner fee if turning into vinyl siding or wood sidin
+* Chimney caps required when stone on chimneys
+* Chimney scaffolding required if stone on chimney""")
+    
+    st.markdown("---")
+    st.subheader("Stone Veneer Pricing")
+    
+    st.markdown("### DEMOLITION")
+    demo_df = st.data_editor(st.session_state.stone_pricing['demolition'], hide_index=True, use_container_width=True, key="demo_ed")
+    st.session_state.stone_pricing['demolition'] = demo_df
+    
+    st.markdown("### DEBRIS REMOVAL (REQUIRED ON ALL JOBS)")
+    debris_df = st.data_editor(st.session_state.stone_pricing['debris'], hide_index=True, use_container_width=True, key="debris_ed")
+    st.session_state.stone_pricing['debris'] = debris_df
+    st.info("** Dumpsters can be provided by the customer at their own expense - they would soley be responsible for delivery, pick up and weight overage fees if applicable. Must be written that way on contract")
+    
+    st.markdown("### STONE ITEMS (REQUIRED ON ALL JOBS)")
+    stone_items_data = [
+        ['Stone Flats (1/2" joint only)', 'SF', '', 58],
+        ['Stone Corners', 'LF', '', 32],
+        ['Chiseled Stone Sills', 'LF', '', 26]
+    ]
+    stone_items_df = pd.DataFrame(stone_items_data, columns=['Description', 'SF/LF/Q', 'Price', 'Sub-Total'])
+    st.dataframe(stone_items_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### MISCELLANEOUS")
+    misc_df = st.data_editor(st.session_state.stone_pricing['misc'], hide_index=True, use_container_width=True, key="misc_ed")
+    st.session_state.stone_pricing['misc'] = misc_df
+    
+    st.markdown("### JOB MINIMUMS")
+    minimums_data = [
+        ['All counties excluding below', '$7,500'],
+        ['Zone (1): Sussex, Warren, Hunterdon, Mercer', '$8,500'],
+        ['Zone (2): Ocean, Burlington, Camden', '$9,500']
+    ]
+    minimums_df = pd.DataFrame(minimums_data, columns=['Description', 'AMOUNT'])
+    st.dataframe(minimums_df, hide_index=True, use_container_width=True)
 
 with tabs[2]:
+    st.session_state.current_service = 'stucco'
     st.subheader("Stucco Painting Measurements")
-    st_df = st.data_editor(st.session_state.measurements['stucco'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['stucco']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="st_ed")
-    st.session_state.measurements['stucco'] = st_df
-    st.subheader("Miscellaneous Items")
-    misc_cols = st.columns(2)
-    idx = 0
-    for itm, det in SERVICE_DATA['stucco']['misc_items'].items():
-        with misc_cols[idx % 2]:
-            q = st.number_input(f"{itm} ({det['unit']}) - ${det['price']:.2f}", min_value=0.0, value=st.session_state.misc_quantities.get(itm, 0.0), step=1.0, key=f"misc_{itm}")
-            st.session_state.misc_quantities[itm] = q
-        idx += 1
-    st.markdown("### Pricing Table")
-    tots, sub = calc_totals('stucco')
-    for itm, q in st.session_state.misc_quantities.items():
-        if q > 0:
-            p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
-            tots[itm] = {'qty': q, 'price': p, 'total': q * p}
-    stucco_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${tots.get(k, {'price': 0})['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in list(SERVICE_DATA['stucco']['items'].keys()) + list(SERVICE_DATA['stucco']['misc_items'].keys())], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
-    st.dataframe(stucco_price, hide_index=True, use_container_width=True)
+    
+    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+    with col1:
+        st.markdown("### Walls")
+        walls_df = st.data_editor(st.session_state.stucco_measurements['walls'], hide_index=True, use_container_width=True, key="stucco_walls_ed")
+        st.session_state.stucco_measurements['walls'] = walls_df
+        st.markdown("**Subtotal of Squares**")
+        st.text_input("Front (Outs) (   )", key="stucco_front_outs")
+        st.text_input("Front Right (Outs) (   )", key="stucco_front_right_outs")
+        st.text_input("Rear (Outs) (   )", key="stucco_rear_outs")
+        st.text_input("Front Left (Outs) (   )", key="stucco_front_left_outs")
+        st.text_input("Squares (Subtotal)", key="stucco_squares_subtotal")
+        st.markdown("**Round up to Nearest Full Square**")
+    
+    with col2:
+        st.markdown("### Window Trim (up to 6\")")
+        window_df = st.data_editor(st.session_state.stucco_measurements['window_trim'], hide_index=True, use_container_width=True, key="stucco_window_ed")
+        st.session_state.stucco_measurements['window_trim'] = window_df
+        
+        st.markdown("### Soffit (up to 12\")")
+        soffit_df = st.data_editor(st.session_state.stucco_measurements['soffit'], hide_index=True, use_container_width=True, key="stucco_soffit_ed")
+        st.session_state.stucco_measurements['soffit'] = soffit_df
+        
+        st.markdown("### Quions (per 1 side only)")
+        quions_df = st.data_editor(st.session_state.stucco_measurements['quions'], hide_index=True, use_container_width=True, key="stucco_quions_ed")
+        st.session_state.stucco_measurements['quions'] = quions_df
+    
+    with col3:
+        st.markdown("### Door Trim (up to 6\")")
+        door_df = st.data_editor(st.session_state.stucco_measurements['door_trim'], hide_index=True, use_container_width=True, key="stucco_door_ed")
+        st.session_state.stucco_measurements['door_trim'] = door_df
+        
+        st.markdown("### Fascia (up to 8\")")
+        fascia_df = st.data_editor(st.session_state.stucco_measurements['fascia'], hide_index=True, use_container_width=True, key="stucco_fascia_ed")
+        st.session_state.stucco_measurements['fascia'] = fascia_df
+        
+        st.markdown("### Other Trim if Any")
+        other_df = st.data_editor(st.session_state.stucco_measurements['other_trim'], hide_index=True, use_container_width=True, key="stucco_other_ed")
+        st.session_state.stucco_measurements['other_trim'] = other_df
+    
+    st.markdown("---")
+    st.subheader("Stucco Painting Pricing")
+    
+    st.markdown("### LOXON XP (Above 8') - WALLS ONLY")
+    loxon_above_data = [
+        ['Includes ladders and access', '200 - 499', '', 14.27],
+        ['Includes powerwash of all work areas', '500 - 999', '', 13.00],
+        ['Crack repair up to 50 linear ft (1" or less)', '1000 - 1699', '', 12.45],
+        ['Apply Two Coats of Loxon XP', '1700 - 2999', '', 11.78],
+        ['Loxon will be rolled or sprayed at our discretion', '3000 - 4499', '', 11.38],
+        ['Wall texture will remain the same', 'Above 4500', '', 11.09]
+    ]
+    loxon_above_df = pd.DataFrame(loxon_above_data, columns=['Description', 'SF RANGE', 'SF', 'PRICE'])
+    st.dataframe(loxon_above_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### LOXON XP (Below 8') - WALLS ONLY")
+    loxon_below_data = [
+        ['Does not include ladders, all ground work', '200 - 499', '', 9.69],
+        ['Includes powerwash of all work areas', '500 - 999', '', 9.11],
+        ['Crack repair up to 50 linear ft (1" or less)', '1000 - 1699', '', 8.73],
+        ['Apply Two Coats of Loxon XP', '1700 - 2999', '', 8.24],
+        ['Loxon will be rolled or sprayed at our discretion', '3000 - 4499', '', 7.95],
+        ['Wall texture will remain the same', 'Above 4500', '', 7.75]
+    ]
+    loxon_below_df = pd.DataFrame(loxon_below_data, columns=['Description', 'SF RANGE', 'SF', 'PRICE'])
+    st.dataframe(loxon_below_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### LOXON XP (TRIM ONLY)")
+    loxon_trim_data = [
+        ['Two coats of Loxon XP over stucco window/door trim (up to 6")', 'Per LF', '', 7.25],
+        ['Two coats of Loxon XP over stucco soffit (up to 12")', 'Per LF', '', 11.67],
+        ['Two coats of Loxon XP over stucco fascia (up to 8")', 'Per LF', '', 8.15],
+        ['Apply two coats of Loxon XP over single side quion', 'Per Side', '', 11.67]
+    ]
+    loxon_trim_df = pd.DataFrame(loxon_trim_data, columns=['Description', '', 'PRICE', 'TOTAL'])
+    st.dataframe(loxon_trim_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### CAULKING (IN CONJUNCTION WITH LOXON PROJECT ONLY)")
+    caulking_data = [
+        ['Caulk only (no raking) - up to 3/4"', '', 8.36],
+        ['Caulk and install backer rod (no raking) - up to 3/4"', '', 11.17],
+        ['Rake out and caulk only - up to 3/4"', '', 12.54],
+        ['Rake out and install backer rod - up to 3/4"', '', 15.32]
+    ]
+    caulking_df = pd.DataFrame(caulking_data, columns=['Description', 'LF', 'PRICE'])
+    st.dataframe(caulking_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### MISCELLANEOUS ITEMS")
+    misc_items_data = [
+        ['EIFS Repair', 'Per SF', '', 60],
+        ['BCMA (Fiberglass, Basecoat, Acrylic Stucco)', 'Per SF', '', 17.59],
+        ['Remove and Re-Install Existing Shutters', 'Per Pair', '', 145],
+        ['Remove, Paint and Re-Install Shutters (per pair)', 'Per Pair', '', 290],
+        ['Stainless Steel Chimney Cover', 'Per Item', '', 1509],
+        ['Plywood (demo, debris, install 1 sheet of plywood) 32 sf', 'Per Item', '', 439],
+        ['Remove and Re-Install Existing Gutters', 'Per LF', '', 6],
+        ['Additional Rigging (For Caulking Only Projects)', 'Per Side', '', 435],
+        ['Clear Sealer, Ladders, Powerwash', 'Per SF', '', 7],
+        ['Additional Heavy Duty Powerwash', 'Per SF', '', 2],
+        ['Additional stucco crack repair above 50 lf (1" or less)', 'Per LF', '', 7],
+        ['Spot Point Brick    (* See rules page)', 'Per SF', '', 29],
+        ['Full Cut and Re-Point (Under 500sf)', 'Per SF', '', 29]
+    ]
+    misc_items_df = pd.DataFrame(misc_items_data, columns=['Description', 'Unit', 'Quantity', 'PRICE'])
+    st.dataframe(misc_items_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### MINIMUMS (FOR WORK ON STANDARD 2 1/2 STORY HOMES LESS THAN 26\")")
+    minimums_data = [
+        ['LOXON', '$4,200'],
+        ['CLEAR SEALER', '$3,500'],
+        ['WOODPECKER HOLES (INCLUDES UP TO 6 HOLES) ADD $500 PER HOLE', '$3,500'],
+        ['BCMA', '$4,200'],
+        ['SPOT POINTING', '$4,900'],
+        ['FULL POINTING', '$5,600'],
+        ['CAULKING', '$5,600']
+    ]
+    minimums_df = pd.DataFrame(minimums_data, columns=['Service', 'Amount'])
+    st.dataframe(minimums_df, hide_index=True, use_container_width=True)
+    
     col1, col2 = st.columns(2)
     with col1:
         rep = st.checkbox("Add Repair - $2,100", key="st_rep")
     with col2:
         rig = st.checkbox("Add Rigging - $1,400", key="st_rig")
+    
     if st.button("Calculate", key="calc_st"):
-        st.markdown("### Project Calculation")
-        sub_total = sum([v['total'] for v in tots.values()])
-        prc = calc_pricing(sub_total, rep, rig)
-        calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
-        if rep:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        if rig:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, hide_index=True, use_container_width=True)
+        st.info("Calculation based on measurements and pricing tables above")
 
 with tabs[3]:
-    st.subheader("House Painting Measurements")
-    p_df = st.data_editor(st.session_state.measurements['painting'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['painting']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="p_ed")
-    st.session_state.measurements['painting'] = p_df
-    st.markdown("### Pricing Table")
-    tots, sub = calc_totals('painting')
-    paint_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['painting']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in SERVICE_DATA['painting']['items'].keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
-    st.dataframe(paint_price, hide_index=True, use_container_width=True)
+    st.session_state.current_service = 'painting'
+    st.subheader("HOUSE PAINTING - 100% OUTS CAN BE TAKEN")
+    
+    col1, col2, col3, col4 = st.columns([3, 1, 1, 1])
+    with col1:
+        st.markdown("### Walls")
+        walls_df = st.data_editor(st.session_state.painting_measurements['walls'], hide_index=True, use_container_width=True, key="painting_walls_ed")
+        st.session_state.painting_measurements['walls'] = walls_df
+        st.markdown("**Subtotal of Squares**")
+        st.text_input("Front (Outs) (   )", key="painting_front_outs")
+        st.text_input("Front Right (Outs) (   )", key="painting_front_right_outs")
+        st.text_input("Rear (Outs) (   )", key="painting_rear_outs")
+        st.text_input("Front Left (Outs) (   )", key="painting_front_left_outs")
+        st.text_input("Squares (Subtotal)", key="painting_squares_subtotal")
+        st.markdown("**Round up to Nearest Full Square**")
+    
+    with col2:
+        st.markdown("### Window Trim (up to 4\")")
+        window_df = st.data_editor(st.session_state.painting_measurements['window_trim'], hide_index=True, use_container_width=True, key="painting_window_ed")
+        st.session_state.painting_measurements['window_trim'] = window_df
+        
+        st.markdown("### Soffit (up to 12\")")
+        soffit_df = st.data_editor(st.session_state.painting_measurements['soffit'], hide_index=True, use_container_width=True, key="painting_soffit_ed")
+        st.session_state.painting_measurements['soffit'] = soffit_df
+        
+        st.markdown("### Entry Doors")
+        entry_df = st.data_editor(st.session_state.painting_measurements['entry_doors'], hide_index=True, use_container_width=True, key="painting_entry_ed")
+        st.session_state.painting_measurements['entry_doors'] = entry_df
+    
+    with col3:
+        st.markdown("### Door Trim (up to 4\")")
+        door_df = st.data_editor(st.session_state.painting_measurements['door_trim'], hide_index=True, use_container_width=True, key="painting_door_ed")
+        st.session_state.painting_measurements['door_trim'] = door_df
+        
+        st.markdown("### Fascia (up to 6\")")
+        fascia_df = st.data_editor(st.session_state.painting_measurements['fascia'], hide_index=True, use_container_width=True, key="painting_fascia_ed")
+        st.session_state.painting_measurements['fascia'] = fascia_df
+        
+        st.markdown("### Garage Doors")
+        garage_df = st.data_editor(st.session_state.painting_measurements['garage_doors'], hide_index=True, use_container_width=True, key="painting_garage_ed")
+        st.session_state.painting_measurements['garage_doors'] = garage_df
+    
+    st.markdown("---")
+    st.subheader("House Painting Pricing")
+    
+    st.markdown("### PAINTING (WALLS ONLY)")
+    walls_pricing_data = [
+        ['Vinyl and Aluminum ---- (Use vinyl safe colors for vinyl only)', '', 8.06, ''],
+        ['Wood Clapboard ---- (20% sand and spot prime)', '', 9.28, ''],
+        ['Wood Clapboard ---- (Full sanding only)', '', 11.5, ''],
+        ['Wood Shake ---- (20% sand and spot prime)', '', 10.02, ''],
+        ['Wood Shake ---- (Full sanding only)', '', 12.19, '']
+    ]
+    walls_pricing_df = pd.DataFrame(walls_pricing_data, columns=['Description', 'Total SF', 'Price Per SF', 'TOTAL'])
+    st.dataframe(walls_pricing_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### PAINTING (TRIM ONLY)")
+    trim_pricing_data = [
+        ['Window trim ---- (up to 4in wide)', 'Per Opening', '', 61.48, ''],
+        ['Door trim ---- (up to 4in wide)', 'Per Opening', '', 61.48, ''],
+        ['Fascia for frieze board trim ---- (up to 6in wide)', 'Per LF', '', 6.36, ''],
+        ['Soffit - Non Vented ---- (up to 12in deep)', 'Per LF', '', 8.48, ''],
+        ['Remove and re-install existing shutters', 'Per Pair', '', 77.38, ''],
+        ['Remove, paint and re-install existing shutters', 'Per Pair', '', 106.0, ''],
+        ['Single front entry door ---- (wood surface only)', 'Per Opening', '', 242.0, ''],
+        ['Garage doors ---- (wood surface only)', 'Per Opening', '', 530.0, '']
+    ]
+    trim_pricing_df = pd.DataFrame(trim_pricing_data, columns=['Description', '', 'Total Qty', 'Price Per Unit', 'TOTAL'])
+    st.dataframe(trim_pricing_df, hide_index=True, use_container_width=True)
+    
+    st.markdown("### MISCELLANEOUS ITEMS")
+    misc_painting_data = [
+        ['Remove / replace (1) sheet of plywood ---- (up to 32sf)', '', '', 316.94, ''],
+        ['Remove / replace wood siding ---- (up to 8 sq exposure)', 'Per 12ft Piece', '', 320.12, ''],
+        ['Remove / replace aluminum siding ---- (up to 8in exposure)', 'Per 12ft Piece', '', 320.12, ''],
+        ['Remove / replace wood trim ---- (2/4in x 3ft x 12ft)', 'Per 16ft Piece', '', 151.58, ''],
+        ['Remove / replace wood clapboard ---- (1/2in x 8in x 16ft)', 'Per 16ft Piece', '', 338.14, ''],
+        ['Remove / replace wood shake ---- (up to 12in Exposure)', 'Per 1/2 Square', '', 647.66, ''],
+        ['Remove / re-install existing gutters', 'Per LF', '', 4.24, ''],
+        ['Additional powerwash', 'Per SF', '', 1.59, ''],
+        ['Caulk only (no raking) ---- (up to 1/2in)', 'Per LF', '', 8.48, ''],
+        ['Rake out and caulk only ---- (up to 1/2in)', 'Per LF', '', 12.72, ''],
+        ['Paint samples ---- (includes 1 color sample)', 'Per Item', '', 82.68, '']
+    ]
+    misc_painting_df = pd.DataFrame(misc_painting_data, columns=['Description', '', 'Quantity', 'Price Per Unit', 'TOTAL'])
+    st.dataframe(misc_painting_df, hide_index=True, use_container_width=True)
+    
     col1, col2 = st.columns(2)
     with col1:
         rep = st.checkbox("Add Repair - $2,100", key="p_rep")
     with col2:
         rig = st.checkbox("Add Rigging - $1,400", key="p_rig")
+    
     if st.button("Calculate", key="calc_p"):
-        st.markdown("### Project Calculation")
-        prc = calc_pricing(sub, rep, rig)
-        calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
-        if rep:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        if rig:
-            calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
-        calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, hide_index=True, use_container_width=True)
+        st.info("Calculation based on measurements and pricing tables above")
 
 st.markdown("---")
 st.header("Generate PDF Estimate")
@@ -407,31 +527,12 @@ with col3:
     srep = st.text_input("Sales Representative", value=st.session_state.customer_info['sales_rep'])
     st.session_state.customer_info['sales_rep'] = srep
 
-svc_sel = st.selectbox("Select Service for PDF", ["gutters", "stone", "stucco", "painting"], format_func=lambda x: SERVICE_DATA[x]['name'])
-
 if st.button("Generate PDF", type="primary"):
     if not cname or not addr or not srep:
         st.error("Fill in all fields")
     else:
-        with st.spinner("Generating PDF..."):
-            tots, sub = calc_totals(svc_sel)
-            if svc_sel == 'stucco':
-                for itm, q in st.session_state.misc_quantities.items():
-                    if q > 0:
-                        p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
-                        tots[itm] = {'qty': q, 'price': p, 'total': q * p}
-                        sub += q * p
-            rep = st.session_state.get(f'{svc_sel}_rep', False)
-            rig = st.session_state.get(f'{svc_sel}_rig', False)
-            original_sub = sub
-            if svc_sel == 'stone':
-                sub += SERVICE_DATA['stone']['delivery_fee']
-            prc = calc_pricing(sub, rep, rig)
-            pdf = gen_pdf(svc_sel, tots, prc, st.session_state.customer_info, original_sub)
-            fname = f"{cname.replace(' ', '_')}_{srep.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
-            st.success("PDF generated successfully!")
-            st.download_button("Download PDF", pdf, fname, "application/pdf", type="primary")
-            st.info("📁 To save to Google Drive: Download the PDF, then upload it to https://drive.google.com/drive/folders/1i_Ka70_VlaucBYAwcfivChslVBKcoe57")
+        st.info("PDF generation functionality will be implemented with the measurements and pricing data entered above")
+        st.info("📁 To save to Google Drive: Download the PDF, then upload it to https://drive.google.com/drive/folders/1i_Ka70_VlaucBYAwcfivChslVBKcoe57")
 
 st.divider()
 st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")
