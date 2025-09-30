@@ -458,65 +458,6 @@ with tabs[0]:
         st.dataframe(pricing_df, use_container_width=True, hide_index=True)
         
         st.subheader("Project Calculation")
-        pricing = calculate_pricing_tiers(subtotal)
-        
-        calc_df = pd.DataFrame([
-            ['1 Year Price', f"${pricing['one_year_price']:.2f}"],
-            ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"],
-            ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"],
-            ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"],
-            ['Day of Price', f"${pricing['day_of_price']:.2f}"],
-            ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"],
-            ['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]
-        ], columns=['Description', 'Amount'])
-        
-        st.dataframe(calc_df, use_container_width=True, hide_index=True)
-
-# Stone Veneer Tab
-with tabs[1]:
-    st.session_state.current_service = 'stone'
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.subheader("Stone Flats")
-        stone_flats_df = st.data_editor(
-            st.session_state.measurements['stone_flats'],
-            num_rows="dynamic",
-            column_config={
-                "Location": st.column_config.SelectboxColumn(
-                    "Location",
-                    options=["FRONT", "RIGHT", "BACK", "LEFT"]
-                ),
-                "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"),
-                "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"),
-                "LF": st.column_config.NumberColumn("LF", disabled=True, format="%.2f")
-            },
-            hide_index=True,
-            use_container_width=True,
-            key="stone_sills_editor"
-        )
-        
-        # Calculate LF for each row
-        for idx, row in stone_sills_df.iterrows():
-            stone_sills_df.at[idx, 'LF'] = calculate_stone_sf_or_lf(row['Width'], row['Height'], 'sills')
-        
-        st.session_state.measurements['stone_sills'] = stone_sills_df
-        st.metric("Total Sills LF", f"{stone_sills_df['LF'].sum():.2f}")
-    
-    # Stone Veneer Calculations
-    if st.button("Calculate Stone Veneer", key="calc_stone"):
-        totals, subtotal = calculate_totals('stone')
-        
-        st.subheader("Pricing Summary")
-        pricing_df = pd.DataFrame([
-            {'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 
-             'Total': f"${v['total']:.2f}"} 
-            for k, v in totals.items() if v['quantity'] > 0
-        ])
-        st.dataframe(pricing_df, use_container_width=True, hide_index=True)
-        
-        st.subheader("Project Calculation")
         subtotal_with_delivery = subtotal + SERVICE_DATA['stone']['delivery_fee']
         pricing = calculate_pricing_tiers(subtotal_with_delivery)
         
@@ -764,7 +705,40 @@ if st.button("Generate PDF Estimate", type="primary", use_container_width=True):
 
 # Footer
 st.divider()
-st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit"),
+st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit"), use_container_width=True, hide_index=True)
+        
+        st.subheader("Project Calculation")
+        pricing = calculate_pricing_tiers(subtotal)
+        
+        calc_df = pd.DataFrame([
+            ['1 Year Price', f"${pricing['one_year_price']:.2f}"],
+            ['Deduct 10%', f"(${pricing['deduct_10_1']:.2f})"],
+            ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"],
+            ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"],
+            ['Day of Price', f"${pricing['day_of_price']:.2f}"],
+            ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"],
+            ['**FINAL SELL PRICE**', f"**${pricing['final_sell_price']:.2f}**"]
+        ], columns=['Description', 'Amount'])
+        
+        st.dataframe(calc_df, use_container_width=True, hide_index=True)
+
+# Stone Veneer Tab
+with tabs[1]:
+    st.session_state.current_service = 'stone'
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.subheader("Stone Flats")
+        stone_flats_df = st.data_editor(
+            st.session_state.measurements['stone_flats'],
+            num_rows="dynamic",
+            column_config={
+                "Location": st.column_config.SelectboxColumn(
+                    "Location",
+                    options=["FRONT", "RIGHT", "BACK", "LEFT"]
+                ),
+                "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"),
                 "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"),
                 "Total SF": st.column_config.NumberColumn("Total SF", disabled=True, format="%.2f")
             },
@@ -816,4 +790,30 @@ st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit"),
                     "Location",
                     options=["FRONT", "RIGHT", "BACK", "LEFT"]
                 ),
-                "Width": st.column_config.NumberColumn("Width (in)", format
+                "Width": st.column_config.NumberColumn("Width (in)", format="%.2f"),
+                "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"),
+                "LF": st.column_config.NumberColumn("LF", disabled=True, format="%.2f")
+            },
+            hide_index=True,
+            use_container_width=True,
+            key="stone_sills_editor"
+        )
+        
+        # Calculate LF for each row
+        for idx, row in stone_sills_df.iterrows():
+            stone_sills_df.at[idx, 'LF'] = calculate_stone_sf_or_lf(row['Width'], row['Height'], 'sills')
+        
+        st.session_state.measurements['stone_sills'] = stone_sills_df
+        st.metric("Total Sills LF", f"{stone_sills_df['LF'].sum():.2f}")
+    
+    # Stone Veneer Calculations
+    if st.button("Calculate Stone Veneer", key="calc_stone"):
+        totals, subtotal = calculate_totals('stone')
+        
+        st.subheader("Pricing Summary")
+        pricing_df = pd.DataFrame([
+            {'Item': k, 'Quantity': f"{v['quantity']:.2f}", 'Unit Price': f"${v['unit_price']:.2f}", 
+             'Total': f"${v['total']:.2f}"} 
+            for k, v in totals.items() if v['quantity'] > 0
+        ])
+        st.dataframe(pricing_df
