@@ -185,34 +185,115 @@ def calc_pricing(sub, rep=False, rig=False):
     if rig: fin += 1400
     return {'y1': y1, 'd1': d1, 'd30': d30, 'd2': d2, 'dof': dof, 'd3': d3, 'rep': 2100 if rep else 0, 'rig': 1400 if rig else 0, 'fin': fin}
 
-def gen_pdf(svc, tots, prc, cust):
+def gen_pdf(svc, tots, prc, cust, sub=0):
     buf = BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=letter)
     story = []
     styles = getSampleStyleSheet()
-    story.append(Paragraph(f"{SERVICE_DATA[svc]['name']} Estimate", styles['Title']))
-    story.append(Spacer(1, 0.2*inch))
+    
+    # Title
+    title_style = ParagraphStyle('Title', parent=styles['Title'], fontSize=24, textColor=colors.HexColor('#2E5CB8'), alignment=1)
+    story.append(Paragraph(f"Garden State Brickface & Siding<br/>{SERVICE_DATA[svc]['name']} Estimate", title_style))
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Customer info
     info_data = [['Customer:', cust['customer_name']], ['Address:', cust['project_address']], ['Sales Rep:', cust['sales_rep']], ['Date:', datetime.now().strftime('%B %d, %Y')]]
     info_t = Table(info_data, colWidths=[1.5*inch, 4.5*inch])
-    info_t.setStyle(TableStyle([('FONT', (0, 0), (-1, -1), 'Helvetica', 10), ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10)]))
+    info_t.setStyle(TableStyle([('FONT', (0, 0), (-1, -1), 'Helvetica', 10), ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10), ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#2E5CB8'))]))
     story.append(info_t)
     story.append(Spacer(1, 0.3*inch))
-    story.append(Paragraph("Items", styles['Heading2']))
-    items_data = [['Item', 'Quantity', 'Unit Price', 'Total']]
-    for i, v in tots.items():
-        if v['qty'] > 0: items_data.append([i, f"{v['qty']:.2f}", f"${v['price']:.2f}", f"${v['total']:.2f}"])
-    items_t = Table(items_data, colWidths=[3*inch, 1.2*inch, 1.2*inch, 1.2*inch])
-    items_t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.grey), ('GRID', (0, 0), (-1, -1), 0.5, colors.black)]))
-    story.append(items_t)
+    
+    # Pricing Tables
+    story.append(Paragraph("Pricing Tables", styles['Heading2']))
+    story.append(Spacer(1, 0.1*inch))
+    
+    if svc == 'gutters':
+        # Gutters table
+        story.append(Paragraph("Gutters (Standard) .27 Gauge", styles['Heading3']))
+        g_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']
+        g_data = [['Item', 'Linear Ft', 'Price Per Ft', 'Price']]
+        for itm in g_items:
+            qty = tots.get(itm, {'qty': 0})['qty']
+            price = SERVICE_DATA['gutters']['items'][itm]['price']
+            total = tots.get(itm, {'total': 0})['total']
+            g_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
+        g_table = Table(g_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
+        g_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
+        story.append(g_table)
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Leaders table
+        story.append(Paragraph("Leaders (Standard) .19 Gauge", styles['Heading3']))
+        l_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']
+        l_data = [['Item', 'Linear Ft', 'Price Per Ft', 'Price']]
+        for itm in l_items:
+            qty = tots.get(itm, {'qty': 0})['qty']
+            price = SERVICE_DATA['gutters']['items'][itm]['price']
+            total = tots.get(itm, {'total': 0})['total']
+            l_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
+        l_table = Table(l_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
+        l_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
+        story.append(l_table)
+        story.append(Spacer(1, 0.2*inch))
+        
+        # Guards table
+        story.append(Paragraph("Gutter Guards", styles['Heading3']))
+        gg_items = [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']
+        gg_data = [['Item', 'LF/Quantity', 'Price Per Ft', 'Price']]
+        for itm in gg_items:
+            qty = tots.get(itm, {'qty': 0})['qty']
+            price = SERVICE_DATA['gutters']['items'][itm]['price']
+            total = tots.get(itm, {'total': 0})['total']
+            gg_data.append([itm, f"{qty:.2f}", f"${price:.2f}", f"${total:.2f}"])
+        gg_table = Table(gg_data, colWidths=[2.5*inch, 1*inch, 1*inch, 1*inch])
+        gg_table.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
+        story.append(gg_table)
+    else:
+        # Single pricing table for stone, stucco, painting
+        items_data = [['Item', 'Quantity', 'Unit Price', 'Total']]
+        for i, v in tots.items():
+            if v['qty'] > 0:
+                items_data.append([i, f"{v['qty']:.2f}", f"${v['price']:.2f}", f"${v['total']:.2f}"])
+        items_t = Table(items_data, colWidths=[3*inch, 1.2*inch, 1.2*inch, 1.2*inch])
+        items_t.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E5CB8')), ('TEXTCOLOR', (0, 0), (-1, 0), colors.white), ('GRID', (0, 0), (-1, -1), 0.5, colors.black), ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 10)]))
+        story.append(items_t)
+    
     story.append(Spacer(1, 0.3*inch))
-    story.append(Paragraph("Pricing", styles['Heading2']))
-    prc_data = [['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3%', f"(${prc['d3']:.2f})"]]
-    if prc['rep'] > 0: prc_data.append(['Add: Repair', f"${prc['rep']:.2f}"])
-    if prc['rig'] > 0: prc_data.append(['Add: Rigging', f"${prc['rig']:.2f}"])
-    prc_data.append(['FINAL PRICE', f"${prc['fin']:.2f}"])
+    
+    # Project Calculation
+    story.append(Paragraph("Project Calculation", styles['Heading2']))
+    prc_data = []
+    
+    if svc == 'stone':
+        prc_data.append(['Subtotal', f"${sub:.2f}"])
+        prc_data.append(['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"])
+    
+    prc_data.extend([
+        ['1 Year Price', f"${prc['y1']:.2f}"],
+        ['Deduct 10%', f"(${prc['d1']:.2f})"],
+        ['30 Day Price', f"${prc['d30']:.2f}"],
+        ['Deduct 10%', f"(${prc['d2']:.2f})"],
+        ['Day of Price', f"${prc['dof']:.2f}"],
+        ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]
+    ])
+    
+    if prc['rep'] > 0:
+        prc_data.append(['Add: Repair', f"${prc['rep']:.2f}"])
+    if prc['rig'] > 0:
+        prc_data.append(['Add: Rigging', f"${prc['rig']:.2f}"])
+    
+    prc_data.append(['FINAL SELL PRICE', f"${prc['fin']:.2f}"])
+    
     prc_t = Table(prc_data, colWidths=[4*inch, 2*inch])
-    prc_t.setStyle(TableStyle([('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 12), ('LINEABOVE', (0, -1), (-1, -1), 2, colors.black)]))
+    prc_t.setStyle(TableStyle([
+        ('FONT', (0, 0), (-1, -2), 'Helvetica', 10),
+        ('FONT', (0, -1), (-1, -1), 'Helvetica-Bold', 14),
+        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#2E5CB8')),
+        ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#2E5CB8')),
+        ('ALIGN', (1, 0), (1, -1), 'RIGHT')
+    ]))
     story.append(prc_t)
+    
     doc.build(story)
     buf.seek(0)
     return buf
@@ -391,10 +472,11 @@ if st.button("Generate PDF", type="primary"):
                         sub += q * p
             rep = st.session_state.get(f'{svc_sel}_rep', False)
             rig = st.session_state.get(f'{svc_sel}_rig', False)
+            original_sub = sub
             if svc_sel == 'stone':
                 sub += SERVICE_DATA['stone']['delivery_fee']
             prc = calc_pricing(sub, rep, rig)
-            pdf = gen_pdf(svc_sel, tots, prc, st.session_state.customer_info)
+            pdf = gen_pdf(svc_sel, tots, prc, st.session_state.customer_info, original_sub)
             fname = f"{cname.replace(' ', '_')}_{srep.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
             st.success("PDF generated successfully!")
             st.download_button("Download PDF", pdf, fname, "application/pdf", type="primary")
