@@ -483,5 +483,5 @@ if st.button("Generate PDF", type="primary"):
             st.info("📁 To save to Google Drive: Download the PDF, then upload it to https://drive.google.com/drive/folders/1i_Ka70_VlaucBYAwcfivChslVBKcoe57")
 
 st.divider()
-st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")project_address'])
+st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")
     st.session_state.customer_info['
