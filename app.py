@@ -764,7 +764,7 @@ if st.button("Generate PDF Estimate", type="primary", use_container_width=True):
 
 # Footer
 st.divider()
-st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit")="%.2f"),
+st.caption("Construction Pricing Calculator v3.0 | Powered by Streamlit"),
                 "Height": st.column_config.NumberColumn("Height (in)", format="%.2f"),
                 "Total SF": st.column_config.NumberColumn("Total SF", disabled=True, format="%.2f")
             },
