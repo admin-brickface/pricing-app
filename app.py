@@ -630,7 +630,7 @@ with tabs[3]:
             ['30 Day Price', f"${pricing['thirty_day_price']:.2f}"],
             ['Deduct 10%', f"(${pricing['deduct_10_2']:.2f})"],
             ['Day of Price', f"${pricing['day_of_price']:.2f}"],
-            ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"],
+            ['Deduct 3% for 33% Deposit', f"(${pricing['deduct_3']:.2f})"]
         ], columns=['Description', 'Amount'])
         
         if repair_addon:
