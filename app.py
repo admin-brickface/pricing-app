@@ -10,6 +10,62 @@ from reportlab.lib.units import inch
 
 st.set_page_config(page_title="Garden State Brickface & Siding Pricing Calculator", page_icon="🏗️", layout="wide")
 
+st.markdown("""
+<style>
+    /* Light theme override */
+    .stApp {
+        background-color: #FFFFFF;
+        color: #000000;
+    }
+    
+    /* Input fields */
+    .stTextInput input, .stNumberInput input, .stSelectbox select {
+        background-color: #F0F2F6;
+        color: #000000;
+    }
+    
+    /* Data editor tables */
+    .stDataFrame, [data-testid="stDataFrame"] {
+        background-color: #FFFFFF;
+    }
+    
+    /* Headers */
+    h1, h2, h3, h4, h5, h6, .stMarkdown h1, .stMarkdown h2, .stMarkdown h3 {
+        color: #000000 !important;
+    }
+    
+    /* Tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #F0F2F6;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        color: #000000;
+    }
+    
+    /* Buttons */
+    .stButton button {
+        background-color: #FF4B4B;
+        color: #FFFFFF;
+    }
+    
+    /* Metrics */
+    [data-testid="stMetricValue"] {
+        color: #000000;
+    }
+    
+    /* Text and paragraphs */
+    p, span, label {
+        color: #000000 !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: #E0E0E0;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 if 'measurements' not in st.session_state:
     st.session_state.measurements = {
         'gutters': pd.DataFrame(columns=['Location', 'Gutter Type', 'LF']),
@@ -183,26 +239,27 @@ with tabs[0]:
         gg_df = st.data_editor(st.session_state.measurements['guards'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Guard Type": st.column_config.SelectboxColumn(options=[k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']), "LF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="gg_ed")
         st.session_state.measurements['guards'] = gg_df
     
+    st.markdown("### Pricing Tables")
+    tots, sub = calc_totals('gutters')
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Gutters (Standard) .27 Gauge**")
+        g_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['gutters']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
+        st.dataframe(g_price, hide_index=True, use_container_width=True)
+    with col2:
+        st.markdown("**Leaders (Standard) .19 Gauge**")
+        l_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['gutters']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
+        st.dataframe(l_price, hide_index=True, use_container_width=True)
+    with col3:
+        st.markdown("**Gutter Guards**")
+        gg_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['gutters']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']], columns=['Item', 'LF/Quantity', 'Price Per Ft', 'Price'])
+        st.dataframe(gg_price, hide_index=True, use_container_width=True)
+    
     if st.button("Calculate", key="calc_g"):
-        tots, sub = calc_totals('gutters')
-        st.markdown("### Pricing Tables")
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.markdown("**Gutters (Standard) .27 Gauge**")
-            g_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'gutters']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
-            st.dataframe(g_price, hide_index=True)
-        with col2:
-            st.markdown("**Leaders (Standard) .19 Gauge**")
-            l_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'leaders']], columns=['Item', 'Linear Ft', 'Price Per Ft', 'Price'])
-            st.dataframe(l_price, hide_index=True)
-        with col3:
-            st.markdown("**Gutter Guards**")
-            gg_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], SERVICE_DATA['gutters']['items'][k]['price'], tots.get(k, {'total': 0})['total']] for k in [k for k, v in SERVICE_DATA['gutters']['items'].items() if v['category'] == 'guards']], columns=['Item', 'LF/Quantity', 'Price Per Ft', 'Price'])
-            st.dataframe(gg_price, hide_index=True)
         st.markdown("### Project Calculation")
         prc = calc_pricing(sub)
         calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"], ['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])
-        st.dataframe(calc_df, hide_index=True)
+        st.dataframe(calc_df, hide_index=True, use_container_width=True)
 
 with tabs[1]:
     st.subheader("Stone Veneer Measurements")
@@ -229,21 +286,23 @@ with tabs[1]:
         st.session_state.measurements['stone_sills'] = ss_df
         st.metric("Total LF", f"{ss_df['LF'].sum():.2f}")
     
+    st.markdown("### Pricing Table")
+    tots, sub = calc_totals('stone')
+    stone_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['stone']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in SERVICE_DATA['stone']['items'].keys()], columns=['Item', 'Quantity', 'Price Per Unit', 'Total'])
+    st.dataframe(stone_price, hide_index=True, use_container_width=True)
+    
     if st.button("Calculate", key="calc_s"):
-        tots, sub = calc_totals('stone')
-        st.markdown("### Pricing Table")
-        stone_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Price Per Unit', 'Total'])
-        st.dataframe(stone_price, hide_index=True)
         st.markdown("### Project Calculation")
         sub_del = sub + SERVICE_DATA['stone']['delivery_fee']
         prc = calc_pricing(sub_del)
         calc_df = pd.DataFrame([['Subtotal', f"${sub:.2f}"], ['Delivery Fee', f"${SERVICE_DATA['stone']['delivery_fee']:.2f}"], ['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"], ['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])
-        st.dataframe(calc_df, hide_index=True)
+        st.dataframe(calc_df, hide_index=True, use_container_width=True)
 
 with tabs[2]:
     st.subheader("Stucco Painting Measurements")
     st_df = st.data_editor(st.session_state.measurements['stucco'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['stucco']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="st_ed")
     st.session_state.measurements['stucco'] = st_df
+    
     st.subheader("Miscellaneous Items")
     misc_cols = st.columns(2)
     idx = 0
@@ -252,6 +311,16 @@ with tabs[2]:
             q = st.number_input(f"{itm} ({det['unit']}) - ${det['price']:.2f}", min_value=0.0, value=st.session_state.misc_quantities.get(itm, 0.0), step=1.0, key=f"misc_{itm}")
             st.session_state.misc_quantities[itm] = q
         idx += 1
+    
+    st.markdown("### Pricing Table")
+    tots, sub = calc_totals('stucco')
+    for itm, q in st.session_state.misc_quantities.items():
+        if q > 0:
+            p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
+            tots[itm] = {'qty': q, 'price': p, 'total': q * p}
+    stucco_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${tots.get(k, {'price': 0})['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in list(SERVICE_DATA['stucco']['items'].keys()) + list(SERVICE_DATA['stucco']['misc_items'].keys())], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
+    st.dataframe(stucco_price, hide_index=True, use_container_width=True)
+    
     col1, col2 = st.columns(2)
     with col1:
         rep = st.checkbox("Add Repair - $2,100", key="st_rep")
@@ -259,27 +328,25 @@ with tabs[2]:
         rig = st.checkbox("Add Rigging - $1,400", key="st_rig")
     
     if st.button("Calculate", key="calc_st"):
-        tots, sub = calc_totals('stucco')
-        for itm, q in st.session_state.misc_quantities.items():
-            if q > 0:
-                p = SERVICE_DATA['stucco']['misc_items'][itm]['price']
-                tots[itm] = {'qty': q, 'price': p, 'total': q * p}
-                sub += q * p
-        st.markdown("### Pricing Table")
-        stucco_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
-        st.dataframe(stucco_price, hide_index=True)
         st.markdown("### Project Calculation")
-        prc = calc_pricing(sub, rep, rig)
+        sub_total = sum([v['total'] for v in tots.values()])
+        prc = calc_pricing(sub_total, rep, rig)
         calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
         if rep: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
         if rig: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
         calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, hide_index=True)
+        st.dataframe(calc_df, hide_index=True, use_container_width=True)
 
 with tabs[3]:
     st.subheader("House Painting Measurements")
     p_df = st.data_editor(st.session_state.measurements['painting'], num_rows="dynamic", column_config={"Location": st.column_config.SelectboxColumn(options=["FRONT", "RIGHT", "BACK", "LEFT"]), "Item Type": st.column_config.SelectboxColumn(options=list(SERVICE_DATA['painting']['items'].keys())), "SF": st.column_config.NumberColumn(format="%.2f")}, hide_index=True, key="p_ed")
     st.session_state.measurements['painting'] = p_df
+    
+    st.markdown("### Pricing Table")
+    tots, sub = calc_totals('painting')
+    paint_price = pd.DataFrame([[k, tots.get(k, {'qty': 0})['qty'], f"${SERVICE_DATA['painting']['items'][k]['price']:.2f}", f"${tots.get(k, {'total': 0})['total']:.2f}"] for k in SERVICE_DATA['painting']['items'].keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
+    st.dataframe(paint_price, hide_index=True, use_container_width=True)
+    
     col1, col2 = st.columns(2)
     with col1:
         rep = st.checkbox("Add Repair - $2,100", key="p_rep")
@@ -287,17 +354,13 @@ with tabs[3]:
         rig = st.checkbox("Add Rigging - $1,400", key="p_rig")
     
     if st.button("Calculate", key="calc_p"):
-        tots, sub = calc_totals('painting')
-        st.markdown("### Pricing Table")
-        paint_price = pd.DataFrame([[k, tots[k]['qty'], tots[k]['price'], tots[k]['total']] for k in tots.keys()], columns=['Item', 'Quantity', 'Unit Price', 'Total'])
-        st.dataframe(paint_price, hide_index=True)
         st.markdown("### Project Calculation")
         prc = calc_pricing(sub, rep, rig)
         calc_df = pd.DataFrame([['1 Year Price', f"${prc['y1']:.2f}"], ['Deduct 10%', f"(${prc['d1']:.2f})"], ['30 Day Price', f"${prc['d30']:.2f}"], ['Deduct 10%', f"(${prc['d2']:.2f})"], ['Day of Price', f"${prc['dof']:.2f}"], ['Deduct 3% for 33% Deposit', f"(${prc['d3']:.2f})"]], columns=['Description', 'Amount'])
         if rep: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Repair', f"${prc['rep']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
         if rig: calc_df = pd.concat([calc_df, pd.DataFrame([['Add: Rigging', f"${prc['rig']:.2f}"]], columns=['Description', 'Amount'])], ignore_index=True)
         calc_df = pd.concat([calc_df, pd.DataFrame([['**FINAL SELL PRICE**', f"**${prc['fin']:.2f}**"]], columns=['Description', 'Amount'])], ignore_index=True)
-        st.dataframe(calc_df, hide_index=True)
+        st.dataframe(calc_df, hide_index=True, use_container_width=True)
 
 st.markdown("---")
 st.header("Generate PDF Estimate")
@@ -318,7 +381,7 @@ if st.button("Generate PDF", type="primary"):
     if not cname or not addr or not srep:
         st.error("Fill in all fields")
     else:
-        with st.spinner("Generating..."):
+        with st.spinner("Generating PDF..."):
             tots, sub = calc_totals(svc_sel)
             if svc_sel == 'stucco':
                 for itm, q in st.session_state.misc_quantities.items():
@@ -333,8 +396,10 @@ if st.button("Generate PDF", type="primary"):
             prc = calc_pricing(sub, rep, rig)
             pdf = gen_pdf(svc_sel, tots, prc, st.session_state.customer_info)
             fname = f"{cname.replace(' ', '_')}_{srep.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
-            st.success("PDF generated!")
+            st.success("PDF generated successfully!")
             st.download_button("Download PDF", pdf, fname, "application/pdf", type="primary")
+            st.info("📁 To save to Google Drive: Download the PDF, then upload it to https://drive.google.com/drive/folders/1i_Ka70_VlaucBYAwcfivChslVBKcoe57")
 
 st.divider()
-st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")
+st.caption("Garden State Brickface & Siding Pricing Calculator v3.0")project_address'])
+    st.session_state.customer_info['
